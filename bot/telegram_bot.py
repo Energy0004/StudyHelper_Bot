@@ -5,6 +5,11 @@ import asyncio
 import re
 from collections import OrderedDict
 
+import tempfile  # For creating temporary files
+import fitz  # PyMuPDF
+import telegram
+from docx import Document as DocxDocument  # python-docx
+
 from telegram import Update, constants, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.ext import (
     Application,
@@ -24,6 +29,16 @@ from localization import get_template, DEFAULT_LOC_LANG
 from .gemini_utils import ask_gemini_stream
 
 logger = logging.getLogger(__name__)  # This will be 'bot.telegram_bot'
+
+try:
+    import pytesseract
+    from PIL import Image
+    TESSERACT_AVAILABLE = True
+except ImportError:
+    logger.warning("Pytesseract or Pillow not found. OCR for images will not be available via Tesseract.")
+    TESSERACT_AVAILABLE = False
+
+TEMP_DIR = "temp_downloads"
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TELEGRAM_BOT_TOKEN:
@@ -92,6 +107,183 @@ DEFAULT_LANGUAGE_CODE = "en"
 LANGS_PER_PAGE = 6
 BUTTONS_PER_ROW = 2
 
+
+# --- Helper to Download File ---
+async def download_telegram_file(bot_instance: telegram.Bot, file_id: str, local_filename: str) -> bool:
+    try:
+        file = await bot_instance.get_file(file_id)
+        await file.download_to_drive(local_filename)
+        logger.info(f"File {file_id} downloaded to {local_filename}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to download file {file_id}: {e}")
+        return False
+
+
+# --- Handler for Photos ---
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user = update.effective_user
+    chat_id = update.effective_chat.id
+    logger.info(f"User {user.id} in chat {chat_id} sent a photo.")
+
+    if not TESSERACT_AVAILABLE:  # or not EASYOCR_AVAILABLE
+        await update.message.reply_text("Sorry, I can't process images right now (OCR tool missing).")
+        return
+
+    # Photos come as a list of PhotoSize objects, pick the largest (best quality)
+    photo_file_id = update.message.photo[-1].file_id
+
+    # Create a temporary file path
+    if not os.path.exists(TEMP_DIR):
+        os.makedirs(TEMP_DIR)
+
+    # Use a unique filename to avoid collisions if multiple users send files
+    temp_file_path = os.path.join(TEMP_DIR, f"{chat_id}_{photo_file_id}.jpg")
+
+    placeholder_message = await update.message.reply_text("Processing photo... 🤖")
+
+    if await download_telegram_file(context.bot, photo_file_id, temp_file_path):
+        try:
+            # --- Perform OCR ---
+            # Option 1: Pytesseract
+            extracted_text = pytesseract.image_to_string(Image.open(temp_file_path))
+            # Option 2: EasyOCR
+            # results = EASYOCR_READER.readtext(temp_file_path)
+            # extracted_text = "\n".join([res[1] for res in results])
+
+            logger.info(f"OCR result for photo {photo_file_id}: '{extracted_text[:100]}...'")
+
+            if not extracted_text.strip():
+                await placeholder_message.edit_text("No text found in the image. Can you try a clearer one?")
+            else:
+                # Now, send this text to Gemini (similar to handle_message)
+                # You might want a separate function to interact with Gemini to avoid code duplication
+                await placeholder_message.edit_text(
+                    f"Extracted text (first 1000 chars):\n```\n{escape_markdown_v2(extracted_text[:1000])}\n```\nNow asking AI to analyze/explain...")
+
+                # Simulate Gemini call for now, replace with actual call
+                # For an actual call, you'd reuse logic from your handle_message's Gemini interaction part
+                conversation_history = context.chat_data.get('conversation_history', [])
+                system_prompt = DEFAULT_SYSTEM_PROMPT_BASE  # Add language if needed
+
+                full_gemini_response = ""
+                async for chunk in ask_gemini_stream(
+                        current_question=f"The user sent an image with the following text. Please help them understand or study this: \n\n{extracted_text}",
+                        conversation_history=conversation_history,
+                        system_prompt=system_prompt
+                ):
+                    full_gemini_response += chunk
+                    # Basic streaming to a new message or edit placeholder
+                    # For a better UX, you'd implement the same chunk-by-chunk editing as in handle_message
+                    if len(full_gemini_response) % 100 == 0 and len(full_gemini_response) > 0:  # Simple update
+                        try:
+                            await placeholder_message.edit_text(
+                                escape_markdown_v2(full_gemini_response[:TELEGRAM_MAX_MESSAGE_LENGTH]))
+                        except BadRequest:
+                            pass  # Ignore if not modified or other minor edit issue
+
+                if full_gemini_response:
+                    await placeholder_message.edit_text(
+                        escape_markdown_v2(full_gemini_response[:TELEGRAM_MAX_MESSAGE_LENGTH]),
+                        parse_mode=constants.ParseMode.MARKDOWN_V2)
+                else:
+                    await placeholder_message.edit_text("AI could not process the extracted text.")
+
+        except pytesseract.TesseractNotFoundError:
+            logger.error("Tesseract is not installed or not in your PATH.")
+            await placeholder_message.edit_text(
+                "Sorry, I can't process images because a required tool (Tesseract OCR) is missing on my end.")
+        except Exception as e:
+            logger.error(f"Error processing photo {photo_file_id}: {e}", exc_info=True)
+            await placeholder_message.edit_text("Sorry, an error occurred while processing the image.")
+        finally:
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)  # Clean up downloaded file
+    else:
+        await placeholder_message.edit_text("Sorry, I couldn't download the photo to process it.")
+
+
+# --- Handler for Documents (PDF, DOCX, etc.) ---
+async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user = update.effective_user
+    doc = update.message.document
+    chat_id = update.effective_chat.id
+    logger.info(f"User {user.id} in chat {chat_id} sent a document: {doc.file_name} (MIME: {doc.mime_type})")
+
+    if not os.path.exists(TEMP_DIR):
+        os.makedirs(TEMP_DIR)
+
+    temp_file_path = os.path.join(TEMP_DIR, f"{chat_id}_{doc.file_id}_{doc.file_name}")
+
+    placeholder_message = await update.message.reply_text(f"Processing document '{doc.file_name}'... 🤖")
+
+    if await download_telegram_file(context.bot, doc.file_id, temp_file_path):
+        extracted_text = ""
+        try:
+            if doc.mime_type == "application/pdf":
+                with fitz.open(temp_file_path) as pdf_doc:
+                    for page in pdf_doc:
+                        extracted_text += page.get_text()
+                logger.info(f"Extracted text from PDF {doc.file_name}: '{extracted_text[:100]}...'")
+
+            elif doc.mime_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document" or \
+                    doc.file_name.lower().endswith(".docx"):
+                docx_doc = DocxDocument(temp_file_path)
+                for para in docx_doc.paragraphs:
+                    extracted_text += para.text + "\n"
+                logger.info(f"Extracted text from DOCX {doc.file_name}: '{extracted_text[:100]}...'")
+
+            # Add handlers for .doc, .txt, etc. if needed
+            # elif doc.mime_type == "application/msword" or doc.file_name.lower().endswith(".doc"):
+            #    await placeholder_message.edit_text("Sorry, processing for .doc files is not fully supported yet. Please try .docx if possible.")
+            #    # (Add antiword or other .doc processing here if you implement it)
+            #    return
+
+            else:
+                await placeholder_message.edit_text(
+                    f"Sorry, I don't know how to process this file type yet: {doc.mime_type or doc.file_name}")
+                return  # Exit if not a processable type
+
+            if not extracted_text.strip():
+                await placeholder_message.edit_text(f"No text content found in '{doc.file_name}'.")
+            else:
+                await placeholder_message.edit_text(
+                    f"Extracted text from '{doc.file_name}' (first 1000 chars):\n```\n{escape_markdown_v2(extracted_text[:1000])}\n```\nNow asking AI to analyze/explain...")
+
+                conversation_history = context.chat_data.get('conversation_history', [])
+                system_prompt = DEFAULT_SYSTEM_PROMPT_BASE  # Add language if needed
+
+                full_gemini_response = ""
+                # Use a similar streaming approach as in handle_message or handle_photo
+                async for chunk in ask_gemini_stream(
+                        current_question=f"The user sent a document ('{doc.file_name}') with the following text content. Please help them understand or study this: \n\n{extracted_text}",
+                        conversation_history=conversation_history,
+                        system_prompt=system_prompt
+                ):
+                    full_gemini_response += chunk
+                    # Implement better streaming updates if needed
+                    if len(full_gemini_response) % 100 == 0 and len(full_gemini_response) > 0:
+                        try:
+                            await placeholder_message.edit_text(
+                                escape_markdown_v2(full_gemini_response[:TELEGRAM_MAX_MESSAGE_LENGTH]))
+                        except BadRequest:
+                            pass
+
+                if full_gemini_response:
+                    await placeholder_message.edit_text(
+                        escape_markdown_v2(full_gemini_response[:TELEGRAM_MAX_MESSAGE_LENGTH]),
+                        parse_mode=constants.ParseMode.MARKDOWN_V2)
+                else:
+                    await placeholder_message.edit_text("AI could not process the extracted text from the document.")
+
+        except Exception as e:
+            logger.error(f"Error processing document {doc.file_name}: {e}", exc_info=True)
+            await placeholder_message.edit_text(f"Sorry, an error occurred while processing '{doc.file_name}'.")
+        finally:
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+    else:
+        await placeholder_message.edit_text(f"Sorry, I couldn't download '{doc.file_name}' to process it.")
 
 def escape_markdown_v2(text: str) -> str:
     if not isinstance(text, str):
@@ -795,6 +987,8 @@ def get_application_with_persistence(persistence: BasePersistence) -> Applicatio
     application.add_handler(CallbackQueryHandler(language_page_callback_handler, pattern=r"^lang_page_"))
     application.add_handler(CallbackQueryHandler(button_callback_handler))  # General catch-all for other buttons
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    # application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    # application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
 
     logger.info("Application object and handlers registered in get_application_with_persistence.")  # Modified log
     return application
