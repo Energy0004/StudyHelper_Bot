@@ -1,8 +1,9 @@
-# --- START OF FILE bot/gemini_utils.py ---
+# --- START OF FULL bot/gemini_utils.py ---
 import asyncio
-import google.generativeai as genai  # Main SDK import
-from google.generativeai import types as genai_types  # For Part, StopCandidateException
+import google.generativeai as genai
+from google.generativeai import types as genai_types  # For StopCandidateException and accessing submodules
 from google.generativeai.types import HarmCategory, HarmBlockThreshold  # These are often directly on types
+# We will access FinishReason via genai_types.generation_types.FinishReason
 
 from google.api_core import exceptions as google_exceptions
 import os
@@ -33,9 +34,16 @@ try:
         HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
         HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
     }
+
+    # Add generation_config with a lower temperature
+    generation_config = genai.types.GenerationConfig(
+        temperature=0.2  # Experiment with values like 0.1, 0.2, 0.3
+    )
+
     model_instance = genai.GenerativeModel(
         MODEL_NAME_FROM_ENV,
         safety_settings=safety_settings,
+        generation_config=generation_config  # <<< ADD THIS
     )
     logger.info(f"Successfully initialized Gemini model: {MODEL_NAME_FROM_ENV}")
 except Exception as e:
@@ -92,31 +100,35 @@ async def _handle_gemini_response_stream(response_stream_iterator, context_messa
             full_response_text += current_chunk_text
             yield current_chunk_text
 
-        # Try accessing FinishReason from the main 'genai' module
-        if chunk.candidates and hasattr(genai, 'FinishReason') and \
-                chunk.candidates[0].finish_reason != genai.FinishReason.STOP:
+        # Access FinishReason via genai_types.generation_types.FinishReason
+        if chunk.candidates and \
+                hasattr(genai_types, 'generation_types') and \
+                hasattr(genai_types.generation_types, 'FinishReason') and \
+                chunk.candidates[0].finish_reason != genai_types.generation_types.FinishReason.STOP:
+
             if not current_chunk_text:
                 candidate = chunk.candidates[0]
                 finish_reason_value = candidate.finish_reason
                 finish_reason_name = "UNKNOWN"
                 try:
-                    finish_reason_name = genai.FinishReason(finish_reason_value).name
+                    finish_reason_name = genai_types.generation_types.FinishReason(finish_reason_value).name
                 except ValueError:
                     logger.warning(f"Unknown finish_reason integer value: {finish_reason_value}")
-                except AttributeError:  # If genai.FinishReason wasn't what we thought
-                    logger.error("genai.FinishReason is not the correct enum. Check SDK.")
-                    yield f"...my {context_message} ended with an unknown status."
+                except AttributeError:
+                    logger.error(
+                        "Path genai_types.generation_types.FinishReason is incorrect or FinishReason is not an enum as expected.")
+                    yield f"...my {context_message} ended with an unconfirmed status."
                     return
 
                 logger.warning(
                     f"Gemini stream ({context_message}) may have ended prematurely. Finish Reason: {finish_reason_name} (Value: {finish_reason_value}).")
-                if finish_reason_value == genai.FinishReason.SAFETY:
+                if finish_reason_value == genai_types.generation_types.FinishReason.SAFETY:
                     yield f"My {context_message} was cut short due to safety guidelines."
-                elif finish_reason_value == genai.FinishReason.MAX_TOKENS:
+                elif finish_reason_value == genai_types.generation_types.FinishReason.MAX_TOKENS:
                     yield f"...my {context_message} was cut short as it reached the maximum length."
-                elif finish_reason_value == genai.FinishReason.RECITATION:
+                elif finish_reason_value == genai_types.generation_types.FinishReason.RECITATION:
                     yield f"...my {context_message} was cut short as it closely matched a source."
-                elif finish_reason_value == genai.FinishReason.OTHER:
+                elif finish_reason_value == genai_types.generation_types.FinishReason.OTHER:
                     yield f"...my {context_message} ended for an unspecified reason."
                 else:
                     yield f"...my {context_message} ended unexpectedly (Reason: {finish_reason_name})."
@@ -179,44 +191,49 @@ async def ask_gemini_vision_stream(
         yield "Sorry, the AI model for images is not available right now."
         return
 
-    try:
-        image_part = genai_types.Part.from_data(data=image_bytes, mime_type=image_mime_type)
-    except Exception as e_part:
-        logger.error(f"Failed to create image Part for Gemini: {e_part}", exc_info=True)
-        yield "Sorry, there was an issue preparing your image for the AI (invalid image data or MIME type?)."
+    # Use dictionary structure for parts, as Part class/factory methods were problematic
+    current_turn_content_parts = []
+    if prompt_text:
+        current_turn_content_parts.append({'text': prompt_text})
+
+    if image_bytes and image_mime_type:
+        current_turn_content_parts.append({
+            'inline_data': {
+                'mime_type': image_mime_type,
+                'data': image_bytes
+            }
+        })
+    else:
+        logger.error("ask_gemini_vision_stream: image_bytes or image_mime_type is missing for vision processing.")
+        yield "Image data is missing or incomplete."
+        return
+
+    if not any(part.get('inline_data') for part in current_turn_content_parts):  # Ensure there's an image part
+        logger.error("ask_gemini_vision_stream: No image part was constructed.")
+        yield "Could not prepare image for AI processing."
         return
 
     model_contents_for_vision = []
     if system_prompt or conversation_history:
         if system_prompt:
             model_contents_for_vision.extend([
-                {'role': 'user', 'parts': [genai_types.Part.from_text(system_prompt)]},
-                {'role': 'model',
-                 'parts': [genai_types.Part.from_text("Okay, I understand the instructions for analyzing the image.")]}
+                {'role': 'user', 'parts': [{'text': system_prompt}]},  # Text part for system prompt
+                {'role': 'model', 'parts': [{'text': "Okay, I understand the instructions for analyzing the image."}]}
             ])
-        if conversation_history:
+        if conversation_history:  # Assumed text-only history
             model_contents_for_vision.extend(conversation_history)
 
-        current_user_parts = []
-        if prompt_text:
-            current_user_parts.append(genai_types.Part.from_text(prompt_text))
-        current_user_parts.append(image_part)
-        model_contents_for_vision.append({'role': 'user', 'parts': current_user_parts})
+        model_contents_for_vision.append({'role': 'user', 'parts': current_turn_content_parts})
         logger.info(
-            f"Preparing to stream MULTIMODAL (chat-style) to Gemini. Text: '{prompt_text[:50]}...', Image MIME: {image_mime_type}")
+            f"Preparing to stream MULTIMODAL (chat-style with dict parts) to Gemini. Text: '{prompt_text[:50]}...', Image MIME: {image_mime_type}")
     else:
-        model_contents_for_vision.append(image_part)
-        if prompt_text:
-            model_contents_for_vision.append(genai_types.Part.from_text(prompt_text))
-        else:
-            model_contents_for_vision.append(genai_types.Part.from_text("Describe this image or explain its content."))
+        # For direct generate_content with no history, 'contents' is just the list of current turn parts
+        model_contents_for_vision = current_turn_content_parts
         logger.info(
-            f"Preparing to stream MULTIMODAL (direct parts) to Gemini. Text: '{prompt_text[:50]}...', Image MIME: {image_mime_type}")
+            f"Preparing to stream MULTIMODAL (direct dict parts list) to Gemini. Text: '{prompt_text[:50]}...', Image MIME: {image_mime_type}")
 
-    if not model_contents_for_vision or \
-            (isinstance(model_contents_for_vision[0], dict) and not model_contents_for_vision[0].get("parts")) or \
-            (isinstance(model_contents_for_vision, list) and not model_contents_for_vision):
-        logger.error("No content parts to send to Gemini for vision stream.")
+    if not model_contents_for_vision:
+        logger.error("No content generated to send to Gemini for vision stream.")
         yield "Nothing to process for the image."
         return
 
