@@ -293,17 +293,18 @@ TEMPLATES = {
         "zh-TW": "語言已設為：{lang_name}。",
         "pt-PT": "Idioma definido como: {lang_name}."
     },
-    "help_text_body": {
+    "help_text_body": { # Renamed from help_message to match the key used in your help_command
         "en": (
-            "I'm your _StudyHelper_Bot_! Send me any message related to your studies.\n"
+            "I'm your _StudyHelper\\_Bot_! Send me any message related to your studies.\n"
             "I try to remember our recent conversation and respond in your preferred language (set with `/language`).\n\n"
+            # "{help_message_title}\n" # Placeholder if you use the title above
             "*Available commands:*\n"
             "`/start` - Ask to clear our chat history and see a welcome message.\n"
             "`/help` - Show this help message.\n"
             "`/language` - Choose your preferred language for my responses."
         ),
         "es": (
-            "¡Soy tu _StudyHelper_Bot_! Envíame cualquier mensaje relacionado con tus estudios.\n"
+            "¡Soy tu _StudyHelper\\_Bot_! Envíame cualquier mensaje relacionado con tus estudios.\n"
             "Intento recordar nuestra conversación reciente y responder en tu idioma preferido (configurado con `/language`).\n\n"
             "*Comandos disponibles:*\n"
             "`/start` - Pide borrar nuestro historial de chat y ver un mensaje de bienvenida.\n"
@@ -311,7 +312,7 @@ TEMPLATES = {
             "`/language` - Elige tu idioma preferido para mis respuestas."
         ),
         "fr": (
-            "Je suis votre _StudyHelper_Bot_ ! Envoyez-moi tout message concernant vos études.\n"
+            "Je suis votre _StudyHelper\\_Bot_ ! Envoyez-moi tout message concernant vos études.\n"
             "J'essaie de me souvenir de notre conversation récente et de répondre dans votre langue préférée (définie avec `/language`).\n\n"
             "*Commandes disponibles :*\n"
             "`/start` - Demandez à effacer notre historique de discussion et voir un message de bienvenue.\n"
@@ -319,7 +320,7 @@ TEMPLATES = {
             "`/language` - Choisissez votre langue préférée pour mes réponses."
         ),
         "de": (
-            "Ich bin dein _StudyHelper_Bot_! Schick mir jede Nachricht, die mit deinem Studium zu tun hat.\n"
+            "Ich bin dein _StudyHelper\\_Bot_! Schick mir jede Nachricht, die mit deinem Studium zu tun hat.\n"
             "Ich versuche, mich an unser letztes Gespräch zu erinnern und in deiner bevorzugten Sprache zu antworten (mit `/language` eingestellt).\n\n"
             "*Verfügbare Befehle:*\n"
             "`/start` - Fordere das Löschen unseres Chatverlaufs und eine Begrüßungsnachricht an.\n"
@@ -327,7 +328,7 @@ TEMPLATES = {
             "`/language` - Wähle deine bevorzugte Sprache für meine Antworten."
         ),
         "ru": (
-            "Я ваш _StudyHelper_Bot_! Отправляйте мне любые сообщения, связанные с учебой.\n"
+            "Я ваш _StudyHelper\\_Bot_! Отправляйте мне любые сообщения, связанные с учебой.\n"
             "Я стараюсь помнить наш недавний разговор и отвечать на вашем предпочтительном языке (устанавливается командой `/language`).\n\n"
             "*Доступные команды:*\n"
             "`/start` - Запрос на очистку истории чата и приветственное сообщение.\n"
@@ -335,7 +336,7 @@ TEMPLATES = {
             "`/language` - Выберите предпочитаемый язык для моих ответов."
         ),
         "zh-CN": (
-            "我是你的 _StudyHelper_Bot_！发送任何与你学习相关的信息给我。\n"
+            "我是你的 _StudyHelper\\_Bot_！发送任何与你学习相关的信息给我。\n"
             "我会尝试记住我们最近的对话，并用你偏好的语言回复（通过 `/language` 设置）。\n\n"
             "*可用命令：*\n"
             "`/start` - 请求清除聊天记录并显示欢迎信息。\n"
@@ -343,7 +344,7 @@ TEMPLATES = {
             "`/language` - 选择我回复时使用的语言。"
         ),
         "kk": (
-            "Мен сіздің _StudyHelper_Bot_ болып табыламын! Оқуыңызға қатысты кез келген хабарламаны жіберіңіз.\n"
+            "Мен сіздің _StudyHelper\\_Bot_ болып табыламын! Оқуыңызға қатысты кез келген хабарламаны жіберіңіз.\n"
             "Мен соңғы сұхбатымызды есте сақтауға және сіздің таңдаған тіліңізде жауап беруге тырысамын (`/language` арқылы орнатылады).\n\n"
             "*Қолжетімді пәрмендер:*\n"
             "`/start` - Сұхбат тарихын тазартуды сұрау және сәлемдесу хабарламасын көру.\n"
@@ -351,7 +352,7 @@ TEMPLATES = {
             "`/language` - Менің жауаптарым үшін қалаған тіліңізді таңдаңыз."
         ),
         "ja": (
-            "私はあなたの_StudyHelper_Bot_です！勉強に関するメッセージを送ってください。\n"
+            "私はあなたの_StudyHelper\\_Bot_です！勉強に関するメッセージを送ってください。\n"
             "最近の会話を覚えており、あなたの希望する言語（`/language`で設定）で返信します。\n\n"
             "*利用可能なコマンド:*\n"
             "`/start` - チャット履歴をクリアしてウェルカムメッセージを表示します。\n"
@@ -359,7 +360,7 @@ TEMPLATES = {
             "`/language` - 返信に使う言語を選択します。"
         ),
         "ko": (
-            "저는 당신의 _StudyHelper_Bot_입니다! 공부와 관련된 메시지를 보내주세요.\n"
+            "저는 당신의 _StudyHelper\\_Bot_입니다! 공부와 관련된 메시지를 보내주세요.\n"
             "최근 대화를 기억하며, 선호하는 언어(`/language`로 설정)로 답변합니다.\n\n"
             "*사용 가능한 명령어:*\n"
             "`/start` - 대화 기록을 삭제하고 환영 메시지를 봅니다.\n"
@@ -367,7 +368,7 @@ TEMPLATES = {
             "`/language` - 답변에 사용할 언어를 선택하세요."
         ),
         "pt-BR": (
-            "Eu sou seu _StudyHelper_Bot_! Envie qualquer mensagem relacionada aos seus estudos.\n"
+            "Eu sou seu _StudyHelper\\_Bot_! Envie qualquer mensagem relacionada aos seus estudos.\n"
             "Eu tento lembrar nossa conversa recente e responder no seu idioma preferido (configurado com `/language`).\n\n"
             "*Comandos disponíveis:*\n"
             "`/start` - Peça para limpar o histórico do chat e ver uma mensagem de boas-vindas.\n"
@@ -375,7 +376,7 @@ TEMPLATES = {
             "`/language` - Escolha seu idioma preferido para minhas respostas."
         ),
         "it": (
-            "Sono il tuo _StudyHelper_Bot_! Inviami qualsiasi messaggio relativo ai tuoi studi.\n"
+            "Sono il tuo _StudyHelper\\_Bot_! Inviami qualsiasi messaggio relativo ai tuoi studi.\n"
             "Cerco di ricordare la nostra conversazione recente e rispondere nella lingua preferita (impostata con `/language`).\n\n"
             "*Comandi disponibili:*\n"
             "`/start` - Richiedi di cancellare la cronologia chat e visualizzare un messaggio di benvenuto.\n"
@@ -383,7 +384,12 @@ TEMPLATES = {
             "`/language` - Scegli la lingua preferita per le mie risposte."
         ),
         "ar": (
-            "أنا بوت _StudyHelper_Bot_ الخاص بك! أرسل لي أي رسالة تتعلق بدراستك.\n"
+            # For Arabic, which is Right-to-Left, Markdown behavior with mixed LTR/RTL can be tricky.
+            # The _StudyHelper\_Bot_ part is LTR.
+            # It's usually best to ensure LTR segments are clearly delineated if issues arise.
+            # Using backticks for the bot name might be safer if _..._ causes issues with RTL flow.
+            # For now, applying the standard fix:
+            "أنا بوت _StudyHelper\\_Bot_ الخاص بك! أرسل لي أي رسالة تتعلق بدراستك.\n"
             "أحاول تذكر محادثتنا الأخيرة والرد بلغتك المفضلة (تُحدد باستخدام `/language`).\n\n"
             "*الأوامر المتاحة:*\n"
             "`/start` - اطلب مسح سجل الدردشة ورؤية رسالة ترحيب.\n"
@@ -391,7 +397,7 @@ TEMPLATES = {
             "`/language` - اختر لغتك المفضلة لردودي."
         ),
         "hi": (
-            "मैं आपका _StudyHelper_Bot_ हूँ! मुझे अपनी पढ़ाई से संबंधित कोई भी संदेश भेजें।\n"
+            "मैं आपका _StudyHelper\\_Bot_ हूँ! मुझे अपनी पढ़ाई से संबंधित कोई भी संदेश भेजें।\n"
             "मैं हमारी हाल की बातचीत याद रखने की कोशिश करता हूँ और आपकी पसंदीदा भाषा में जवाब देता हूँ (`/language` से सेट)।\n\n"
             "*उपलब्ध कमांड:*\n"
             "`/start` - चैट इतिहास साफ़ करने और स्वागत संदेश देखने के लिए कहें।\n"
@@ -399,7 +405,7 @@ TEMPLATES = {
             "`/language` - मेरी प्रतिक्रियाओं के लिए अपनी पसंदीदा भाषा चुनें।"
         ),
         "tr": (
-            "Ben senin _StudyHelper_Bot_'unum! Bana çalışmalarınla ilgili herhangi bir mesaj gönder.\n"
+            "Ben senin _StudyHelper\\_Bot_'unum! Bana çalışmalarınla ilgili herhangi bir mesaj gönder.\n"
             "Son sohbetimizi hatırlamaya çalışır ve tercih ettiğin dilde cevap veririm (`/language` ile ayarlanır).\n\n"
             "*Mevcut komutlar:*\n"
             "`/start` - Sohbet geçmişimizi temizlemeyi ve bir karşılama mesajı görmeyi iste.\n"
@@ -407,7 +413,7 @@ TEMPLATES = {
             "`/language` - Yanıtlarım için tercih ettiğin dili seç."
         ),
         "nl": (
-            "Ik ben je _StudyHelper_Bot_! Stuur me een bericht over je studie.\n"
+            "Ik ben je _StudyHelper\\_Bot_! Stuur me een bericht over je studie.\n"
             "Ik probeer ons recente gesprek te onthouden en te antwoorden in je voorkeurstaal (ingesteld met `/language`).\n\n"
             "*Beschikbare commando's:*\n"
             "`/start` - Vraag om onze chatgeschiedenis te wissen en een welkomstbericht te zien.\n"
@@ -415,7 +421,7 @@ TEMPLATES = {
             "`/language` - Kies je voorkeurs taal voor mijn antwoorden."
         ),
         "pl": (
-            "Jestem twoim _StudyHelper_Bot_! Wyślij mi dowolną wiadomość związaną z nauką.\n"
+            "Jestem twoim _StudyHelper\\_Bot_! Wyślij mi dowolną wiadomość związaną z nauką.\n"
             "Staram się pamiętać naszą ostatnią rozmowę i odpowiadać w twoim preferowanym języku (ustawiane przez `/language`).\n\n"
             "*Dostępne polecenia:*\n"
             "`/start` - Poproś o wyczyszczenie historii czatu i wyświetlenie powitalnej wiadomości.\n"
@@ -423,7 +429,7 @@ TEMPLATES = {
             "`/language` - Wybierz preferowany język moich odpowiedzi."
         ),
         "sv": (
-            "Jag är din _StudyHelper_Bot_! Skicka mig ett meddelande om dina studier.\n"
+            "Jag är din _StudyHelper\\_Bot_! Skicka mig ett meddelande om dina studier.\n"
             "Jag försöker komma ihåg vår senaste konversation och svara på ditt föredragna språk (inställt med `/language`).\n\n"
             "*Tillgängliga kommandon:*\n"
             "`/start` - Be om att rensa vår chatt-historik och visa ett välkomstmeddelande.\n"
@@ -431,7 +437,7 @@ TEMPLATES = {
             "`/language` - Välj ditt föredragna språk för mina svar."
         ),
         "fi": (
-            "Olen _StudyHelper_Bot_! Lähetä minulle mitä tahansa opintoihisi liittyvää viestiä.\n"
+            "Olen _StudyHelper\\_Bot_! Lähetä minulle mitä tahansa opintoihisi liittyvää viestiä.\n"
             "Yritän muistaa viimeisimmän keskustelumme ja vastata valitsemallasi kielellä (`/language`).\n\n"
             "*Saatavilla olevat komennot:*\n"
             "`/start` - Pyydä tyhjentämään keskusteluhistoria ja näkemään tervetuloviesti.\n"
@@ -439,7 +445,7 @@ TEMPLATES = {
             "`/language` - Valitse vastausteni kieli."
         ),
         "no": (
-            "Jeg er din _StudyHelper_Bot_! Send meg en melding relatert til studiene dine.\n"
+            "Jeg er din _StudyHelper\\_Bot_! Send meg en melding relatert til studiene dine.\n"
             "Jeg prøver å huske vår siste samtale og svare på ditt foretrukne språk (innstilt med `/language`).\n\n"
             "*Tilgjengelige kommandoer:*\n"
             "`/start` - Be om å tømme chatthistorikken og se en velkomstmelding.\n"
@@ -447,7 +453,7 @@ TEMPLATES = {
             "`/language` - Velg ditt foretrukne språk for mine svar."
         ),
         "da": (
-            "Jeg er din _StudyHelper_Bot_! Send mig en besked relateret til dine studier.\n"
+            "Jeg er din _StudyHelper\\_Bot_! Send mig en besked relateret til dine studier.\n"
             "Jeg prøver at huske vores seneste samtale og svare på dit foretrukne sprog (indstillet med `/language`).\n\n"
             "*Tilgængelige kommandoer:*\n"
             "`/start` - Bed om at rydde chat historikken og se en velkomstbesked.\n"
@@ -455,7 +461,7 @@ TEMPLATES = {
             "`/language` - Vælg dit foretrukne sprog for mine svar."
         ),
         "cs": (
-            "Jsem váš _StudyHelper_Bot_! Pošlete mi jakoukoli zprávu týkající se vašich studií.\n"
+            "Jsem váš _StudyHelper\\_Bot_! Pošlete mi jakoukoli zprávu týkající se vašich studií.\n"
             "Snažím se pamatovat na naši nedávnou konverzaci a odpovídat ve vámi preferovaném jazyce (nastaveném příkazem `/language`).\n\n"
             "*Dostupné příkazy:*\n"
             "`/start` - Požádejte o vymazání historie chatu a zobrazení uvítací zprávy.\n"
@@ -463,7 +469,7 @@ TEMPLATES = {
             "`/language` - Vyberte preferovaný jazyk pro mé odpovědi."
         ),
         "hu": (
-            "Én vagyok a te _StudyHelper_Bot_-od! Küldj nekem bármilyen tanulmányokkal kapcsolatos üzenetet.\n"
+            "Én vagyok a te _StudyHelper\\_Bot_-od! Küldj nekem bármilyen tanulmányokkal kapcsolatos üzenetet.\n"
             "Megpróbálom megjegyezni a legutóbbi beszélgetésünket és a preferált nyelveden válaszolni (`/language`-vel beállítható).\n\n"
             "*Elérhető parancsok:*\n"
             "`/start` - Kérd a csevegési előzmények törlését és egy üdvözlő üzenet megjelenítését.\n"
@@ -471,7 +477,7 @@ TEMPLATES = {
             "`/language` - Válaszd ki a válaszaim nyelvét."
         ),
         "ro": (
-            "Sunt _StudyHelper_Bot_-ul tău! Trimite-mi orice mesaj legat de studiile tale.\n"
+            "Sunt _StudyHelper\\_Bot_-ul tău! Trimite-mi orice mesaj legat de studiile tale.\n"
             "Încerc să îmi amintesc conversația recentă și să răspund în limba ta preferată (setată cu `/language`).\n\n"
             "*Comenzi disponibile:*\n"
             "`/start` - Cere să se șteargă istoricul conversației și să vezi un mesaj de bun venit.\n"
@@ -479,7 +485,7 @@ TEMPLATES = {
             "`/language` - Alege limba preferată pentru răspunsurile mele."
         ),
         "el": (
-            "Είμαι ο _StudyHelper_Bot_ σου! Στείλε μου οποιοδήποτε μήνυμα σχετικό με τις σπουδές σου.\n"
+            "Είμαι ο _StudyHelper\\_Bot_ σου! Στείλε μου οποιοδήποτε μήνυμα σχετικό με τις σπουδές σου.\n"
             "Προσπαθώ να θυμάμαι την πρόσφατη συνομιλία μας και να απαντώ στη γλώσσα που προτιμάς (ορίζεται με `/language`).\n\n"
             "*Διαθέσιμες εντολές:*\n"
             "`/start` - Ζήτα να διαγραφεί το ιστορικό συνομιλιών και να δεις ένα μήνυμα καλωσορίσματος.\n"
@@ -487,7 +493,7 @@ TEMPLATES = {
             "`/language` - Επέλεξε την προτιμώμενη γλώσσα για τις απαντήσεις μου."
         ),
         "he": (
-            "אני ה_StudyHelper_Bot_ שלך! שלח לי כל הודעה שקשורה ללימודים שלך.\n"
+            "אני ה_StudyHelper\\_Bot_ שלך! שלח לי כל הודעה שקשורה ללימודים שלך.\n"
             "אני מנסה לזכור את השיחה האחרונה שלנו ולהגיב בשפה המועדפת עליך (נבחרת באמצעות `/language`).\n\n"
             "*פקודות זמינות:*\n"
             "`/start` - בקש לנקות את היסטוריית הצ׳אט ולקבל הודעת ברכה.\n"
@@ -495,7 +501,7 @@ TEMPLATES = {
             "`/language` - בחר את שפת התשובות שלי."
         ),
         "th": (
-            "ฉันคือ _StudyHelper_Bot_ ของคุณ! ส่งข้อความที่เกี่ยวกับการเรียนของคุณมาได้เลย\n"
+            "ฉันคือ _StudyHelper\\_Bot_ ของคุณ! ส่งข้อความที่เกี่ยวกับการเรียนของคุณมาได้เลย\n"
             "ฉันพยายามจำบทสนทนาล่าสุดและตอบกลับเป็นภาษาที่คุณเลือกไว้ (`/language`).\n\n"
             "*คำสั่งที่ใช้ได้:*\n"
             "`/start` - ขอเคลียร์ประวัติแชทและดูข้อความต้อนรับ\n"
@@ -503,7 +509,7 @@ TEMPLATES = {
             "`/language` - เลือกภาษาที่ต้องการให้ฉันตอบกลับ"
         ),
         "vi": (
-            "Tôi là _StudyHelper_Bot_ của bạn! Gửi cho tôi bất kỳ tin nhắn nào liên quan đến việc học của bạn.\n"
+            "Tôi là _StudyHelper\\_Bot_ của bạn! Gửi cho tôi bất kỳ tin nhắn nào liên quan đến việc học của bạn.\n"
             "Tôi cố gắng ghi nhớ cuộc trò chuyện gần đây và trả lời bằng ngôn ngữ bạn chọn (đặt bằng `/language`).\n\n"
             "*Các lệnh có sẵn:*\n"
             "`/start` - Yêu cầu xóa lịch sử trò chuyện và xem tin nhắn chào mừng.\n"
@@ -511,7 +517,7 @@ TEMPLATES = {
             "`/language` - Chọn ngôn ngữ ưu tiên để tôi trả lời."
         ),
         "id": (
-            "Saya _StudyHelper_Bot_ Anda! Kirimkan pesan apa pun yang berhubungan dengan studi Anda.\n"
+            "Saya _StudyHelper\\_Bot_ Anda! Kirimkan pesan apa pun yang berhubungan dengan studi Anda.\n"
             "Saya mencoba mengingat percakapan terbaru dan merespons dalam bahasa pilihan Anda (diatur dengan `/language`).\n\n"
             "*Perintah yang tersedia:*\n"
             "`/start` - Minta untuk menghapus riwayat chat dan melihat pesan sambutan.\n"
@@ -519,7 +525,7 @@ TEMPLATES = {
             "`/language` - Pilih bahasa pilihan Anda untuk respons saya."
         ),
         "ms": (
-            "Saya adalah _StudyHelper_Bot_ anda! Hantar apa-apa mesej berkaitan dengan pembelajaran anda.\n"
+            "Saya adalah _StudyHelper\\_Bot_ anda! Hantar apa-apa mesej berkaitan dengan pembelajaran anda.\n"
             "Saya cuba mengingati perbualan terkini dan membalas dalam bahasa pilihan anda (ditetapkan dengan `/language`).\n\n"
             "*Perintah tersedia:*\n"
             "`/start` - Minta untuk membersihkan sejarah chat dan lihat mesej alu-aluan.\n"
@@ -527,7 +533,7 @@ TEMPLATES = {
             "`/language` - Pilih bahasa pilihan anda untuk balasan saya."
         ),
         "uk": (
-            "Я ваш _StudyHelper_Bot_! Надсилайте мені будь-які повідомлення, що стосуються ваших навчань.\n"
+            "Я ваш _StudyHelper\\_Bot_! Надсилайте мені будь-які повідомлення, що стосуються ваших навчань.\n"
             "Я намагаюся пам’ятати нашу недавню розмову і відповідати вашою обраною мовою (встановлюється командою `/language`).\n\n"
             "*Доступні команди:*\n"
             "`/start` - Попросити очистити історію чату і побачити привітальне повідомлення.\n"
@@ -535,7 +541,7 @@ TEMPLATES = {
             "`/language` - Оберіть бажану мову для моїх відповідей."
         ),
         "uz": (
-            "Men sizning _StudyHelper_Bot_ man! O'qishingizga oid har qanday xabarni menga yuboring.\n"
+            "Men sizning _StudyHelper\\_Bot_ man! O'qishingizga oid har qanday xabarni menga yuboring.\n"
             "So‘nggi suhbatimizni eslab qolishga harakat qilaman va javoblarni siz tanlagan tilingizda beraman (`/language` yordamida sozlanadi).\n\n"
             "*Mavjud buyruqlar:*\n"
             "`/start` - Suhbat tariximizni tozalash va xush kelibsiz xabarini ko‘rishni so‘rashingiz mumkin.\n"
@@ -543,7 +549,7 @@ TEMPLATES = {
             "`/language` - Javoblarim uchun afzal tilingizni tanlang."
         ),
         "zh-TW": (
-            "我是你的_StudyHelper_Bot_！發送任何與你的學習相關的訊息給我。\n"
+            "我是你的_StudyHelper\\_Bot_！發送任何與你的學習相關的訊息給我。\n"
             "我會嘗試記住我們最近的對話，並用你設定的語言回覆（通過 `/language` 設定）。\n\n"
             "*可用指令：*\n"
             "`/start` - 請求清除我們的聊天記錄並查看歡迎訊息。\n"
@@ -551,7 +557,7 @@ TEMPLATES = {
             "`/language` - 選擇你希望我使用的回覆語言。"
         ),
         "pt-PT": (
-            "Sou o teu _StudyHelper_Bot_! Envia-me qualquer mensagem relacionada com os teus estudos.\n"
+            "Sou o teu _StudyHelper\\_Bot_! Envia-me qualquer mensagem relacionada com os teus estudos.\n"
             "Tento lembrar a nossa conversa recente e responder na língua que preferires (definido com `/language`).\n\n"
             "*Comandos disponíveis:*\n"
             "`/start` - Pede para limpar o histórico do chat e vê uma mensagem de boas-vindas.\n"
