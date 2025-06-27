@@ -72,24 +72,42 @@ except ValueError:
 
 DEFAULT_SYSTEM_PROMPT_BASE = os.getenv(
     "DEFAULT_SYSTEM_PROMPT_BASE",
-    """You are a helpful, accurate, and meticulous AI Study Helper...
-    ...
+    """You are a helpful, accurate, and meticulous AI Study Helper. Your primary goal is to assist users in understanding educational material, solving problems, and learning new concepts.
+    When a user provides text, an image, or a document, analyze it thoroughly and provide clear, concise, and informative explanations.
+    If the input is a question or problem, guide the user towards the solution step-by-step, or explain the underlying principles.
+    If the input is general material, summarize key points, explain complex terms, or suggest related topics for further study.
+    Always strive for factual correctness and pedagogical effectiveness.
+    Maintain a supportive and encouraging tone.
+
     **Strict MarkdownV2 Formatting Rules (MANDATORY FOR CORRECT DISPLAY!):**
     Your response will be parsed by Telegram's MarkdownV2 engine. Failure to adhere to these rules WILL result in incorrect display or parsing errors.
 
-    *   **Headings:** ...
-    *   **Bold:** ...
-    *   **Italics:** ...
-    *   **Inline Code:** ...
-    *   **Code Blocks:** ...
+    *   **Headings:** Use bold text for headings. Example: `*Main Topic*` or `*Sub-Topic*`. Do NOT use `#` for headings.
+    *   **Bold:** Use asterisks: `*bold text*`.
+    *   **Italics:** Use ONE underscore on each side of the text (`_italic text_`) or ONE asterisk on each side (`*italic text*`).
+        *   **CRITICAL: ALL ITALIC TAGS MUST BE CORRECTLY OPENED AND CLOSED. NO UNTERMINATED ITALICS.** For example, `_this is correct_`, but `_this is incorrect` (missing closing underscore) WILL FAIL.
+        *   Ensure there are no stray `_` or `*` characters that could be misinterpreted as unclosed italics, especially at the end of lines or paragraphs. Avoid using underscores or asterisks for emphasis if they are not part of a valid, closed pair, unless they are escaped.
+    *   **Strikethrough:** Use tildes: `~strikethrough text~`.
+    *   **Underline:** Use double underscores: `__underline text__`. (Note: Telegram clients may render this as italics if underline is not supported, or it might be a custom interpretation by the library).
+    *   **Spoiler:** Use double vertical bars: `||spoiler text||`.
+    *   **Inline Code:** Use single backticks: `` `inline code` ``.
+        *   **CRITICAL (for inline code):** Content within inline code (`...`) must NOT contain any other MarkdownV2 special characters (`_`, `*`, `[`, `]`, `(`, `)`, `~`, `` ` ``, `>`, `#`, `+`, `-`, `=`, `|`, `{`, `}`, `.`, `!`) unless they are *also* escaped with a preceding `\`. For example, to show `_variable_` literally inside inline code, it should be ``` ``\\_variable\\_`` ```.
+    *   **Code Blocks (Preformatted Text):** Use triple backticks for multi-line code blocks. You can specify a language.
+        Example:
+        ```python
+        def hello():
+            print("Hello, World!")
+        ```
+        *   **CRITICAL (for code blocks):** Content within code blocks (```...```) is generally treated as literal and does not need escaping of Markdown characters. However, the triple backticks themselves must not be escaped.
 
     *   **Bullet Lists:**
-        *   Must start with `* ` (asterisk followed by ONE space) OR `- ` (hyphen followed by ONE space).
-        *   **CRITICAL: A single space character MUST follow the `*` or `-` bullet marker.**
+        *   Must start with `* ` (asterisk followed by ONE space) OR `- ` (hyphen followed by ONE space) OR `+ ` (plus followed by ONE space).
+        *   **CRITICAL: A single space character MUST follow the `*`, `-`, or `+` bullet marker.**
         *   Correct Example: `* List item text`
         *   Correct Example: `- Another list item`
-        *   INCORRECT (will fail): `*List item text`
-        *   INCORRECT (will fail): `-Another list item`
+        *   INCORRECT (will fail): `*List item text` (no space)
+        *   INCORRECT (will fail): `-Another list item` (no space)
+        *   Nested lists are possible by indenting with spaces (e.g., four spaces). `    * Nested item`
 
     *   **Numbered Lists:**
         *   Must start with `1. ` (number, then a period, then ONE space).
@@ -97,15 +115,23 @@ DEFAULT_SYSTEM_PROMPT_BASE = os.getenv(
         *   The actual numbers you use (1, 2, 3 or 1, 1, 1) usually don't matter as much as the format `number. space text`; Telegram often re-numbers them. But for clarity, use sequential numbers.
         *   Correct Example: `1. First item text`
         *   Correct Example: `2. Second item text`
-        *   INCORRECT (will fail): `1.First item text`
-        *   INCORRECT (will fail): `2.Second item text`
+        *   INCORRECT (will fail): `1.First item text` (no space)
+        *   INCORRECT (will fail): `2.Second item text` (no space)
 
-    *   **Escaping Special Characters:** ... (keep your detailed instructions for escaping `_`, `*`, `.`, `!`, etc., when they are meant to be literal) ...
-        *   Example: `1\. This is not a list item, but a sentence starting with 1 followed by an escaped period and then text.`
+    *   **Links:**
+        *   Inline links: `[Link Text](http://example.com)`
+        *   The URL part `(http://example.com)` should generally not contain Markdown special characters unless they are percent-encoded. Parentheses `()` within the URL itself must be percent-encoded (`%28` and `%29`).
 
-    *   **Well-Formed Markdown:** All formatting pairs (`*...*`, `_..._`, `` `...` ``) must be correctly opened and closed. No unclosed entities.
+    *   **Escaping Special Characters:**
+        *   If you need to use any of the special MarkdownV2 characters `_`, `*`, `[`, `]`, `(`, `)`, `~`, `` ` ``, `>`, `#`, `+`, `-`, `=`, `|`, `{`, `}`, `.`, `!` literally (not for formatting), you MUST escape them with a preceding backslash `\`.
+        *   Example: `This is a literal asterisk: \* and this is a literal period: \. not a list item\.`
+        *   Example: `1\. This is not a list item, but a sentence starting with 1 followed by an escaped period.`
+        *   A literal backslash `\` must also be escaped: `\\`.
 
-    Please pay EXTREME attention to these formatting rules, especially the spacing in lists and the correct escaping of literal special characters. Your output's readability depends entirely on this."""
+    *   **Well-Formed Markdown:** All formatting pairs (`*...*`, `_..._`, `` `...` ``, `~...~`, `__...__`, `||...||`) must be correctly opened and closed. No unclosed entities.
+
+    Please pay EXTREME attention to these formatting rules, especially the correct opening AND CLOSING of all formatting entities like italics, bold, code, etc., the spacing in lists, and the correct escaping of literal special characters. AVOID UNTERMINATED MARKDOWN ENTITIES. Your output's readability depends entirely on this.
+    If uncertain about a complex formatting, prefer simpler, well-formed Markdown or plain text for that segment."""
 )
 TELEGRAM_MAX_MESSAGE_LENGTH = 4096
 STREAM_UPDATE_INTERVAL = 0.75
@@ -489,36 +515,47 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     logger.info(
         f"User {user.id} in chat {chat_id} (msg_id: {message_id_for_uniqueness}) sent document: {doc.file_name} (MIME: {doc.mime_type})")
 
+    user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
+
     if not os.path.exists(TEMP_DIR):
         try:
             os.makedirs(TEMP_DIR)
         except OSError as e:
             logger.error(f"Could not create TEMP_DIR '{TEMP_DIR}': {e}")
-            await update.message.reply_text(
-                escape_markdown_v2("Server error: Cannot create temporary storage."))  # Consider localizing
+            error_msg_raw = get_template("error_temp_storage", user_lang_code,
+                                         default_val="⚠️ Server error: Cannot create temporary storage.")
+            await update.message.reply_text(escape_markdown_v2(error_msg_raw),
+                                            parse_mode=constants.ParseMode.MARKDOWN_V2)
             return
 
     base_name, ext = os.path.splitext(doc.file_name or f"file_{doc.file_id}")
     temp_file_name = f"{chat_id}_{user.id}_{doc.file_id}_{message_id_for_uniqueness}{ext}"
     temp_file_path = os.path.join(TEMP_DIR, temp_file_name)
 
-    user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
+    if 'mdv2_failed_for_msg_id' not in context.chat_data:
+        context.chat_data['mdv2_failed_for_msg_id'] = {}
 
-    # Initial placeholder for document processing
-    placeholder_text_raw = get_template("processing_document", user_lang_code,
-                                        file_name=escape_markdown_v2(doc.file_name or "document"))
     placeholder_message: telegram.Message | None = None
+    current_placeholder_parse_mode: constants.ParseMode | None = constants.ParseMode.MARKDOWN_V2  # Assume MDV2 initially
+
     try:
+        # CORRECTED: Pass the raw filename, escape the final string
+        placeholder_text_raw = get_template("processing_document", user_lang_code,
+                                            file_name=(doc.file_name or "document"))
         placeholder_message = await update.message.reply_text(
             escape_markdown_v2(placeholder_text_raw),
             parse_mode=constants.ParseMode.MARKDOWN_V2
         )
-    except BadRequest:  # Try plain if MDV2 fails
+        current_placeholder_parse_mode = constants.ParseMode.MARKDOWN_V2
+    except BadRequest:
         try:
+            placeholder_text_raw = get_template("processing_document", user_lang_code,
+                                                file_name=doc.file_name or "document")
             placeholder_message = await update.message.reply_text(placeholder_text_raw, parse_mode=None)
+            current_placeholder_parse_mode = None  # Plain text
         except Exception as e_plain_ph:
             logger.error(f"Chat {chat_id}: Failed to send even plain initial placeholder for document: {e_plain_ph}")
-            return  # Cannot proceed without a placeholder
+            return
     if not placeholder_message:
         logger.error(f"Chat {chat_id}: placeholder_message is None after initial sending. Cannot proceed.")
         return
@@ -527,430 +564,329 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         extracted_text = ""
         extraction_successful = False
         try:
+            # --- Document Type Specific Extraction ---
             if doc.mime_type == "application/pdf" or doc.file_name.lower().endswith(".pdf"):
                 with fitz.open(temp_file_path) as pdf_doc:
-                    for page_num, page in enumerate(pdf_doc):
+                    for page in pdf_doc:
                         extracted_text += page.get_text("text")
                         if len(extracted_text) > 300000:
-                            logger.warning(
-                                f"PDF {doc.file_name} text extraction stopped at 300k chars (page {page_num + 1}).")
+                            logger.warning(f"PDF {doc.file_name} text extraction stopped at 300k chars.")
                             extracted_text += "\n[...Content truncated due to length...]"
                             break
-                logger.info(
-                    f"Extracted text from PDF '{doc.file_name}': {len(extracted_text)} chars.")
+                logger.info(f"Extracted text from PDF '{doc.file_name}': {len(extracted_text)} chars.")
                 extraction_successful = True
-
-            elif doc.mime_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document" or \
-                    doc.file_name.lower().endswith(".docx"):
-                docx_doc = DocxDocument(temp_file_path)
-                for para in docx_doc.paragraphs:
-                    extracted_text += para.text + "\n"
-                logger.info(
-                    f"Extracted text from DOCX '{doc.file_name}': {len(extracted_text)} chars.")
-                extraction_successful = True
-
+            elif doc.mime_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                   "application/msword"] or \
+                    doc.file_name.lower().endswith((".docx", ".doc")):
+                try:
+                    docx_doc = DocxDocument(temp_file_path)
+                    for para in docx_doc.paragraphs:
+                        extracted_text += para.text + "\n"
+                    logger.info(f"Extracted text from DOCX/DOC '{doc.file_name}': {len(extracted_text)} chars.")
+                    extraction_successful = True
+                except Exception as e_docx:
+                    logger.error(f"Error extracting from DOCX/DOC {doc.file_name}: {e_docx}")
+                    # This will be caught by the generic e_process_doc handler below
+                    raise e_docx
             elif doc.mime_type == "text/plain" or doc.file_name.lower().endswith(".txt"):
                 with open(temp_file_path, 'r', encoding='utf-8', errors='ignore') as txt_file:
                     extracted_text = txt_file.read()
-                logger.info(
-                    f"Read text from TXT '{doc.file_name}': {len(extracted_text)} chars.")
+                logger.info(f"Read text from TXT '{doc.file_name}': {len(extracted_text)} chars.")
                 extraction_successful = True
-
             else:
                 unsupported_msg_raw = get_template("unsupported_document_type", user_lang_code,
-                                                   file_type=escape_markdown_v2(doc.mime_type or doc.file_name))
+                                                   file_type=(doc.mime_type or doc.file_name))
                 await placeholder_message.edit_text(escape_markdown_v2(unsupported_msg_raw),
                                                     parse_mode=constants.ParseMode.MARKDOWN_V2)
                 if os.path.exists(temp_file_path): os.remove(temp_file_path)
                 return
 
             if not extracted_text.strip() and extraction_successful:
+                # CORRECTED: Pass raw filename, then escape
                 no_text_msg_raw = get_template("no_text_in_document", user_lang_code,
-                                               file_name=escape_markdown_v2(doc.file_name))
-                await placeholder_message.edit_text(escape_markdown_v2(no_text_msg_raw),
-                                                    parse_mode=constants.ParseMode.MARKDOWN_V2)
+                                               file_name=(doc.file_name or "the document"))
+                try:
+                    await placeholder_message.edit_text(escape_markdown_v2(no_text_msg_raw),
+                                                        parse_mode=constants.ParseMode.MARKDOWN_V2)
+                except BadRequest:
+                    await placeholder_message.edit_text(no_text_msg_raw, parse_mode=None)
+                return
 
             elif extracted_text.strip():
+                # --- Update placeholder to "Asking AI..." ---
                 snippet_info_raw = get_template("extracted_text_snippet_info", user_lang_code,
-                                                file_name=escape_markdown_v2(doc.file_name),
-                                                chars_count=min(1000, len(extracted_text)))
+                                                file_name=(doc.file_name or "the document"),
+                                                chars_count=len(extracted_text))
                 asking_ai_raw = get_template('asking_ai_analysis', user_lang_code)
-
-                new_placeholder_text_escaped = (
-                    f"{escape_markdown_v2(snippet_info_raw)}\n"
-                    f"```\n{escape_markdown_v2(extracted_text[:1000].replace('`', '\\`'))}\n```\n"  # Escape backticks in snippet
-                    f"{escape_markdown_v2(asking_ai_raw)}"
-                )
+                new_placeholder_text_raw = f"{snippet_info_raw}\n\n```\n{extracted_text[:1000]}\n```\n\n{asking_ai_raw}"
                 try:
-                    await placeholder_message.edit_text(new_placeholder_text_escaped,
+                    await placeholder_message.edit_text(escape_markdown_v2(new_placeholder_text_raw),
                                                         parse_mode=constants.ParseMode.MARKDOWN_V2)
-                except BadRequest:  # Try plain for this intermediate placeholder
-                    await placeholder_message.edit_text(
-                        f"{snippet_info_raw}\n{extracted_text[:1000]}\n{asking_ai_raw}", parse_mode=None)
+                    current_placeholder_parse_mode = constants.ParseMode.MARKDOWN_V2
+                except BadRequest:
+                    plain_placeholder = f"{snippet_info_raw}\n---\n{extracted_text[:1000]}\n---\n{asking_ai_raw}"
+                    await placeholder_message.edit_text(plain_placeholder, parse_mode=None)
+                    current_placeholder_parse_mode = None
 
+                initial_placeholder_text_for_gemini_interaction = placeholder_message.text
+                current_message_text_on_telegram = placeholder_message.text
+
+                # --- Prepare for Gemini Call ---
                 conversation_history = context.chat_data.get('conversation_history', [])
                 language_name_for_prompt = \
-                    SUPPORTED_LANGUAGES.get(user_lang_code, SUPPORTED_LANGUAGES[DEFAULT_LANGUAGE_CODE]).split(" (")[0]
+                SUPPORTED_LANGUAGES.get(user_lang_code, SUPPORTED_LANGUAGES[DEFAULT_LANGUAGE_CODE]).split(" (")[0]
                 system_prompt = DEFAULT_SYSTEM_PROMPT_BASE + f"\n\nImportant: Please provide your entire response in {language_name_for_prompt}."
-
                 gemini_question = (
-                    f"The user has uploaded a document named '{escape_markdown_v2(doc.file_name)}'. "
+                    f"The user has uploaded a document named '{(doc.file_name or "untitled")}'. "
                     f"Here is the text content extracted from it. Please act as an AI Study Helper: analyze this text, "
                     f"explain key concepts, summarize it, or answer potential questions a student might have about it. "
                     f"Prioritize correctness and clarity in your explanation.\n\n"
                     f"Extracted Text:\n---\n{extracted_text}\n---"
                 )
 
-                accumulated_raw_text = ""
+                accumulated_raw_text_for_current_segment = ""
                 full_raw_response_for_history = ""
                 last_edit_time = asyncio.get_event_loop().time()
 
-                # This is the text of the "Extracted text snippet... Asking AI..." message
-                initial_placeholder_text_for_gemini_interaction = placeholder_message.text
-                current_message_text_on_telegram = placeholder_message.text
-                current_content_is_transformed_plain = False  # Assume initial placeholder was MDV2 if possible
-
                 logger.debug(f"Chat {chat_id}: Calling ask_gemini_stream for document '{doc.file_name}' content.")
-                async for chunk_raw in ask_gemini_stream(
-                        current_question=gemini_question,
-                        conversation_history=conversation_history,
-                        system_prompt=system_prompt
-                ):
+                async for chunk_raw in ask_gemini_stream(gemini_question, conversation_history, system_prompt):
                     full_raw_response_for_history += chunk_raw
-                    accumulated_raw_text += chunk_raw  # Raw text from Gemini
+                    accumulated_raw_text_for_current_segment += chunk_raw
                     current_time = asyncio.get_event_loop().time()
+
+                    current_placeholder_mdv2_has_failed_parsing = context.chat_data['mdv2_failed_for_msg_id'].get(
+                        placeholder_message.message_id, False)
 
                     should_edit_now = (
                             current_message_text_on_telegram == initial_placeholder_text_for_gemini_interaction or
                             current_time - last_edit_time >= STREAM_UPDATE_INTERVAL or
-                            len(chunk_raw) > 70  # Significant new chunk
+                            len(chunk_raw) > 70
                     )
 
-                    if accumulated_raw_text.strip() and should_edit_now:
-                        raw_text_for_this_stream_part = accumulated_raw_text
+                    if accumulated_raw_text_for_current_segment.strip() and should_edit_now:
+                        raw_text_to_process = accumulated_raw_text_for_current_segment
+                        text_to_send_this_edit = ""
+                        parse_mode_for_this_edit_attempt = None
 
-                        # Skip edit if content is visually identical to what's already displayed
-                        skip_edit_flag = False
-                        if current_message_text_on_telegram != initial_placeholder_text_for_gemini_interaction:
-                            if current_content_is_transformed_plain:
-                                if transform_markdown_fallback(
-                                        raw_text_for_this_stream_part) == current_message_text_on_telegram:
-                                    skip_edit_flag = True
-                            else:  # Current content is (presumably) escaped MDV2
-                                if escape_markdown_v2(
-                                        raw_text_for_this_stream_part) == current_message_text_on_telegram:
-                                    skip_edit_flag = True
-                        if skip_edit_flag:
-                            last_edit_time = current_time
-                            continue
+                        if current_placeholder_mdv2_has_failed_parsing:
+                            logger.debug(
+                                f"Chat {chat_id} (Doc Stream): MDV2 previously failed for msg {placeholder_message.message_id}. Using TRANSFORMED PLAIN.")
+                            text_to_send_this_edit = transform_markdown_fallback(raw_text_to_process)
+                            parse_mode_for_this_edit_attempt = None
+                        else:
+                            text_to_send_this_edit = escape_markdown_v2(raw_text_to_process)
+                            parse_mode_for_this_edit_attempt = constants.ParseMode.MARKDOWN_V2
 
-                        edit_attempted_successfully_in_tier = False
+                        if len(text_to_send_this_edit) > TELEGRAM_MAX_MESSAGE_LENGTH:
+                            logger.info(
+                                f"Chat {chat_id} (Doc Stream): Text for chosen format ({'MDV2' if parse_mode_for_this_edit_attempt else 'PLAIN'}) too long. Offloading.")
 
-                        # Attempt 1: Escaped MarkdownV2
-                        text_to_edit_escaped = escape_markdown_v2(raw_text_for_this_stream_part)
-                        try:
-                            if len(text_to_edit_escaped) > TELEGRAM_MAX_MESSAGE_LENGTH:
-                                logger.info(
-                                    f"Chat {chat_id} (Doc Stream): Escaped text too long ({len(text_to_edit_escaped)}). Offloading to fallback.")
-                                # Offload the raw accumulated text that's too long
-                                await send_long_message_fallback(update, context, raw_text_for_this_stream_part)
-                                accumulated_raw_text = ""  # Reset for the new placeholder
+                            done_message_raw = get_template("response_continued_below", user_lang_code,
+                                                            default_val="...(see new messages below)...")
+                            try:
+                                if placeholder_message.text != escape_markdown_v2(done_message_raw):
+                                    await placeholder_message.edit_text(escape_markdown_v2(done_message_raw),
+                                                                        parse_mode=constants.ParseMode.MARKDOWN_V2)
+                            except BadRequest:
+                                if placeholder_message.text != done_message_raw:
+                                    await placeholder_message.edit_text(done_message_raw, parse_mode=None)
 
-                                # Create a new placeholder
-                                continuing_raw = get_template("continuing_response", user_lang_code,
-                                                              default_val="...continuing response...")
-                                placeholder_message = await update.message.reply_text(
-                                    escape_markdown_v2(continuing_raw), parse_mode=constants.ParseMode.MARKDOWN_V2
-                                )
-                                initial_placeholder_text_for_gemini_interaction = placeholder_message.text
-                                current_message_text_on_telegram = placeholder_message.text
-                                current_content_is_transformed_plain = False
-                                edit_attempted_successfully_in_tier = True
-                            else:
-                                await context.bot.edit_message_text(
-                                    text_to_edit_escaped, chat_id, placeholder_message.message_id,
-                                    parse_mode=constants.ParseMode.MARKDOWN_V2
-                                )
-                                current_message_text_on_telegram = text_to_edit_escaped
-                                current_content_is_transformed_plain = False
-                                edit_attempted_successfully_in_tier = True
-                                logger.debug(f"Chat {chat_id} (Doc Stream): Edit with ESCAPED MDV2 successful.")
+                            await send_long_message_fallback(update, context, raw_text_to_process)
+                            accumulated_raw_text_for_current_segment = ""
 
-                        except BadRequest as e_md:
-                            if "Message is too long" in str(
-                                    e_md):  # Should be caught by length check above, but as safeguard
-                                logger.info(
-                                    f"Chat {chat_id} (Doc Stream): Escaped MDV2 text too long during edit. Offloading.")
-                                await send_long_message_fallback(update, context, raw_text_for_this_stream_part)
-                                accumulated_raw_text = ""
-                                continuing_raw = get_template("continuing_response", user_lang_code,
-                                                              default_val="...continuing response...")
+                            if placeholder_message.message_id in context.chat_data['mdv2_failed_for_msg_id']:
+                                del context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id]
+
+                            continuing_raw = get_template("continuing_response", user_lang_code,
+                                                          default_val="...continuing response...")
+                            try:
                                 placeholder_message = await update.message.reply_text(
                                     escape_markdown_v2(continuing_raw), parse_mode=constants.ParseMode.MARKDOWN_V2)
-                                initial_placeholder_text_for_gemini_interaction = placeholder_message.text
-                                current_message_text_on_telegram = placeholder_message.text
-                                current_content_is_transformed_plain = False
-                                edit_attempted_successfully_in_tier = True
-                            elif "message is not modified" in str(e_md).lower():
-                                logger.debug(f"Chat {chat_id} (Doc Stream): ESCAPED MDV2 message not modified.")
-                                edit_attempted_successfully_in_tier = True  # No change, but counts as "handled"
-                            else:  # Other MDV2 error (e.g., parsing)
-                                logger.warning(
-                                    f"Chat {chat_id} (Doc Stream): ESCAPED MDV2 FAILED: {e_md}. Preview: '{raw_text_for_this_stream_part[:70]}'. Trying transformed plain.")
-                                # Fallthrough to Attempt 2: Transformed Plain
+                                current_placeholder_parse_mode = constants.ParseMode.MARKDOWN_V2
+                            except BadRequest:
+                                placeholder_message = await update.message.reply_text(continuing_raw, parse_mode=None)
+                                current_placeholder_parse_mode = None
 
-                        # Attempt 2: Transformed Plain (if MDV2 failed and wasn't "not modified" or "too long handled by split")
-                        if not edit_attempted_successfully_in_tier:
-                            transformed_text = transform_markdown_fallback(raw_text_for_this_stream_part)
+                            initial_placeholder_text_for_gemini_interaction = placeholder_message.text
+                            current_message_text_on_telegram = placeholder_message.text
+                        else:
                             try:
-                                if len(transformed_text) > TELEGRAM_MAX_MESSAGE_LENGTH:
-                                    logger.info(
-                                        f"Chat {chat_id} (Doc Stream): Transformed plain text too long ({len(transformed_text)}). Offloading.")
-                                    await send_long_message_fallback(update, context, raw_text_for_this_stream_part)
-                                    accumulated_raw_text = ""
-                                    continuing_raw = get_template("continuing_response", user_lang_code,
-                                                                  default_val="...continuing response...")
-                                    placeholder_message = await update.message.reply_text(
-                                        escape_markdown_v2(continuing_raw), parse_mode=constants.ParseMode.MARKDOWN_V2)
-                                    initial_placeholder_text_for_gemini_interaction = placeholder_message.text
-                                    current_message_text_on_telegram = placeholder_message.text
-                                    current_content_is_transformed_plain = False
-                                    edit_attempted_successfully_in_tier = True
-                                else:
+                                if text_to_send_this_edit != current_message_text_on_telegram:
                                     await context.bot.edit_message_text(
-                                        transformed_text, chat_id, placeholder_message.message_id,
-                                        parse_mode=None  # Plain text
+                                        text_to_send_this_edit, chat_id, placeholder_message.message_id,
+                                        parse_mode=parse_mode_for_this_edit_attempt
                                     )
-                                    current_message_text_on_telegram = transformed_text
-                                    current_content_is_transformed_plain = True
-                                    edit_attempted_successfully_in_tier = True
-                                    logger.info(f"Chat {chat_id} (Doc Stream): Edit with TRANSFORMED PLAIN successful.")
-                            except BadRequest as e_plain:
-                                if "message is not modified" in str(e_plain).lower():
-                                    logger.debug(
-                                        f"Chat {chat_id} (Doc Stream): TRANSFORMED PLAIN message not modified.")
-                                    edit_attempted_successfully_in_tier = True
+                                    current_placeholder_parse_mode = parse_mode_for_this_edit_attempt
+                                    current_message_text_on_telegram = text_to_send_this_edit
+                                    if parse_mode_for_this_edit_attempt == constants.ParseMode.MARKDOWN_V2:
+                                        context.chat_data['mdv2_failed_for_msg_id'][
+                                            placeholder_message.message_id] = False
+                                logger.debug(
+                                    f"Chat {chat_id} (Doc Stream): Edit with {'ESCAPED MDV2' if parse_mode_for_this_edit_attempt else 'TRANSFORMED PLAIN'} successful.")
+                            except BadRequest as e_edit_stream:
+                                if "message is not modified" in str(e_edit_stream).lower():
+                                    pass
+                                elif parse_mode_for_this_edit_attempt == constants.ParseMode.MARKDOWN_V2 and \
+                                        any(err_str in str(e_edit_stream).lower() for err_str in
+                                            ["can't parse entities", "unescaped", "can't find end of",
+                                             "nested entities"]):
+                                    logger.warning(
+                                        f"Chat {chat_id} (Doc Stream): ESCAPED MDV2 FAILED PARSING: {e_edit_stream}. Sticking to plain for msg_id {placeholder_message.message_id}."
+                                    )
+                                    context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id] = True
+
+                                    transformed_retry = transform_markdown_fallback(raw_text_to_process)
+                                    if len(transformed_retry) > TELEGRAM_MAX_MESSAGE_LENGTH:
+                                        transformed_retry = transformed_retry[:TELEGRAM_MAX_MESSAGE_LENGTH]
+                                    try:
+                                        if transformed_retry != current_message_text_on_telegram:
+                                            await context.bot.edit_message_text(
+                                                transformed_retry, chat_id, placeholder_message.message_id,
+                                                parse_mode=None
+                                            )
+                                            current_placeholder_parse_mode = None
+                                            current_message_text_on_telegram = transformed_retry
+                                        logger.info(
+                                            f"Chat {chat_id} (Doc Stream): Retry edit with TRANSFORMED PLAIN successful.")
+                                    except BadRequest as e_plain_retry_stream:
+                                        if "message is not modified" not in str(e_plain_retry_stream).lower():
+                                            logger.error(
+                                                f"Chat {chat_id} (Doc Stream): TRANSFORMED PLAIN retry FAILED: {e_plain_retry_stream}")
                                 else:
                                     logger.error(
-                                        f"Chat {chat_id} (Doc Stream): TRANSFORMED PLAIN FAILED: {e_plain}. Preview: '{transformed_text[:70]}'. Trying raw plain.")
-                                    # Fallthrough to Attempt 3: Raw Plain
-
-                        # Attempt 3: Raw Plain (if Transformed Plain also failed)
-                        if not edit_attempted_successfully_in_tier:
-                            try:
-                                if len(raw_text_for_this_stream_part) > TELEGRAM_MAX_MESSAGE_LENGTH:
-                                    logger.info(
-                                        f"Chat {chat_id} (Doc Stream): Raw plain text too long ({len(raw_text_for_this_stream_part)}). Offloading.")
-                                    await send_long_message_fallback(update, context, raw_text_for_this_stream_part)
-                                    accumulated_raw_text = ""
-                                    continuing_raw = get_template("continuing_response", user_lang_code,
-                                                                  default_val="...continuing response...")
-                                    placeholder_message = await update.message.reply_text(
-                                        escape_markdown_v2(continuing_raw), parse_mode=constants.ParseMode.MARKDOWN_V2)
-                                    initial_placeholder_text_for_gemini_interaction = placeholder_message.text
-                                    current_message_text_on_telegram = placeholder_message.text
-                                    current_content_is_transformed_plain = False
-                                    # edit_attempted_successfully_in_tier = True # Covered by next lines
-                                else:
-                                    await context.bot.edit_message_text(
-                                        raw_text_for_this_stream_part[:TELEGRAM_MAX_MESSAGE_LENGTH],
-                                        # Truncate just in case
-                                        chat_id, placeholder_message.message_id, parse_mode=None
-                                    )
-                                    current_message_text_on_telegram = raw_text_for_this_stream_part[
-                                                                       :TELEGRAM_MAX_MESSAGE_LENGTH]
-                                    current_content_is_transformed_plain = True
-                                    logger.info(
-                                        f"Chat {chat_id} (Doc Stream): Edit with RAW PLAIN successful as last resort.")
-                                # edit_attempted_successfully_in_tier = True # Set implicitly by reaching here
-                            except Exception as e_raw_plain_fail:
-                                logger.error(
-                                    f"Chat {chat_id} (Doc Stream): RAW PLAIN fallback FAILED: {e_raw_plain_fail}")
-                                # At this point, all stream edit attempts for this chunk failed.
+                                        f"Chat {chat_id} (Doc Stream): Unhandled BadRequest during stream edit: {e_edit_stream}")
 
                         last_edit_time = current_time
                         await asyncio.sleep(0.05)
 
-                # --- Final Edit/Message Handling for Document Content ---
+                # --- Final Edit/Message Handling ---
                 logger.info(
                     f"Chat {chat_id} (Doc): Gemini stream finished. Full raw response length: {len(full_raw_response_for_history)}.")
+                final_segment_raw = accumulated_raw_text_for_current_segment.strip()
 
-                # `accumulated_raw_text` contains the final part of the response for the current placeholder
-                final_segment_raw = accumulated_raw_text.strip()
-                done_message_raw = get_template("analysis_complete", user_lang_code, default_val="✅ Analysis complete.")
+                if final_segment_raw:
+                    final_placeholder_mdv2_has_failed_parsing = context.chat_data['mdv2_failed_for_msg_id'].get(
+                        placeholder_message.message_id, False)
+                    text_for_final_edit = ""
+                    parse_mode_for_final_edit_attempt = None
 
-                if final_segment_raw:  # If there's remaining text for the current placeholder_message
-                    # Check if visually same as what's on placeholder_message already
-                    is_final_visually_same = False
-                    if current_content_is_transformed_plain:
-                        if transform_markdown_fallback(final_segment_raw) == current_message_text_on_telegram and \
-                                current_message_text_on_telegram != initial_placeholder_text_for_gemini_interaction:
-                            is_final_visually_same = True
-                    else:  # Current placeholder is MDV2
-                        if escape_markdown_v2(final_segment_raw) == current_message_text_on_telegram and \
-                                current_message_text_on_telegram != initial_placeholder_text_for_gemini_interaction:
-                            is_final_visually_same = True
+                    if final_placeholder_mdv2_has_failed_parsing:
+                        text_for_final_edit = transform_markdown_fallback(final_segment_raw)
+                        parse_mode_for_final_edit_attempt = None
+                    else:
+                        text_for_final_edit = escape_markdown_v2(final_segment_raw)
+                        parse_mode_for_final_edit_attempt = constants.ParseMode.MARKDOWN_V2
 
-                    if is_final_visually_same:
+                    if len(text_for_final_edit) > TELEGRAM_MAX_MESSAGE_LENGTH:
                         logger.info(
-                            f"Chat {chat_id} (Doc Final): Final segment visually identical. No final edit for this placeholder.")
-                        # If the placeholder was a "continuing" one, ensure it's marked "Done"
-                        if placeholder_message.text != escape_markdown_v2(done_message_raw) and \
-                                (
-                                        "continuing" in placeholder_message.text.lower() or "processing" in placeholder_message.text.lower() and \
-                                        initial_placeholder_text_for_gemini_interaction != placeholder_message.text):  # Check it's not the snippet placeholder
-                            try:
+                            f"Chat {chat_id} (Doc Final): Final segment too long. Using send_long_message_fallback.")
+                        done_message_raw = get_template("response_complete", user_lang_code,
+                                                        default_val="✅ Analysis complete.")
+                        try:
+                            if placeholder_message.text != escape_markdown_v2(done_message_raw):
                                 await placeholder_message.edit_text(escape_markdown_v2(done_message_raw),
                                                                     parse_mode=constants.ParseMode.MARKDOWN_V2)
-                            except BadRequest:
-                                pass
-                    else:  # Attempt final edit with tiered strategy
-                        final_edit_successful = False
-                        # Attempt 1: Escaped MDV2 for final segment
-                        final_text_escaped = escape_markdown_v2(final_segment_raw)
+                        except:
+                            if placeholder_message.text != done_message_raw:
+                                await placeholder_message.edit_text(done_message_raw, parse_mode=None)
+                        await send_long_message_fallback(update, context, final_segment_raw)
+                    else:
                         try:
-                            if len(final_text_escaped) > TELEGRAM_MAX_MESSAGE_LENGTH:
-                                logger.info(
-                                    f"Chat {chat_id} (Doc Final): Final segment (escaped) too long. Using send_long_message_fallback.")
-                                if placeholder_message.text != escape_markdown_v2(
-                                        done_message_raw):  # Update original placeholder
-                                    try:
-                                        await placeholder_message.edit_text(escape_markdown_v2(done_message_raw),
-                                                                            parse_mode=constants.ParseMode.MARKDOWN_V2)
-                                    except:
-                                        pass
-                                await send_long_message_fallback(update, context, final_segment_raw)  # Send raw
-                                final_edit_successful = True  # Handled by fallback
-                            else:
-                                await placeholder_message.edit_text(final_text_escaped,
-                                                                    parse_mode=constants.ParseMode.MARKDOWN_V2)
-                                logger.info(f"Chat {chat_id} (Doc Final): Final edit with ESCAPED MDV2 successful.")
-                                final_edit_successful = True
-                        except BadRequest as e_f_esc:
-                            if "message is not modified" in str(e_f_esc).lower():
-                                final_edit_successful = True  # No change needed
-                            elif "Message is too long" in str(e_f_esc).lower():  # Safeguard
-                                logger.info(
-                                    f"Chat {chat_id} (Doc Final): Final segment (escaped) too long on edit. Using send_long_message_fallback.")
-                                if placeholder_message.text != escape_markdown_v2(done_message_raw):
-                                    try:
-                                        await placeholder_message.edit_text(escape_markdown_v2(done_message_raw),
-                                                                            parse_mode=constants.ParseMode.MARKDOWN_V2)
-                                    except:
-                                        pass
-                                await send_long_message_fallback(update, context, final_segment_raw)
-                                final_edit_successful = True
-                            else:
+                            if text_for_final_edit != current_message_text_on_telegram:
+                                await placeholder_message.edit_text(text_for_final_edit,
+                                                                    parse_mode=parse_mode_for_final_edit_attempt)
+                            logger.info(
+                                f"Chat {chat_id} (Doc Final): Final edit with {'ESCAPED MDV2' if parse_mode_for_final_edit_attempt else 'TRANSFORMED PLAIN'} successful.")
+                        except BadRequest as e_f_edit:
+                            if "message is not modified" in str(e_f_edit).lower():
+                                pass
+                            elif parse_mode_for_final_edit_attempt == constants.ParseMode.MARKDOWN_V2 and \
+                                    any(err_str in str(e_f_edit).lower() for err_str in
+                                        ["can't parse entities", "unescaped", "can't find end of", "nested entities"]):
                                 logger.warning(
-                                    f"Chat {chat_id} (Doc Final): Final Escaped MDV2 FAILED: {e_f_esc}. Trying transformed plain.")
-
-                        # Attempt 2: Transformed Plain for final segment
-                        if not final_edit_successful:
-                            final_transformed = transform_markdown_fallback(final_segment_raw)
-                            try:
-                                if len(final_transformed) > TELEGRAM_MAX_MESSAGE_LENGTH:
+                                    f"Chat {chat_id} (Doc Final): Final Escaped MDV2 FAILED PARSING: {e_f_edit}. Trying transformed plain.")
+                                transformed_final_fallback = transform_markdown_fallback(final_segment_raw)
+                                if len(transformed_final_fallback) > TELEGRAM_MAX_MESSAGE_LENGTH:
+                                    transformed_final_fallback = transformed_final_fallback[
+                                                                 :TELEGRAM_MAX_MESSAGE_LENGTH]
+                                try:
+                                    if transformed_final_fallback != current_message_text_on_telegram:
+                                        await placeholder_message.edit_text(transformed_final_fallback, parse_mode=None)
                                     logger.info(
-                                        f"Chat {chat_id} (Doc Final): Final segment (transformed) too long. Using send_long_message_fallback.")
-                                    if placeholder_message.text != escape_markdown_v2(done_message_raw):
-                                        try:
-                                            await placeholder_message.edit_text(escape_markdown_v2(done_message_raw),
-                                                                                parse_mode=constants.ParseMode.MARKDOWN_V2)
-                                        except:
-                                            pass
-                                    await send_long_message_fallback(update, context, final_segment_raw)  # Send raw
-                                    final_edit_successful = True
-                                else:
-                                    await placeholder_message.edit_text(final_transformed, parse_mode=None)
-                                    logger.info(
-                                        f"Chat {chat_id} (Doc Final): Final edit with TRANSFORMED PLAIN successful.")
-                                    final_edit_successful = True
-                            except BadRequest as e_f_plain:
-                                if "message is not modified" in str(e_f_plain).lower():
-                                    final_edit_successful = True
-                                else:
-                                    logger.warning(
-                                        f"Chat {chat_id} (Doc Final): Transformed Plain FAILED: {e_f_plain}. Trying raw plain.")
-
-                        # Attempt 3: Raw Plain for final segment
-                        if not final_edit_successful:
-                            try:
-                                if len(final_segment_raw) > TELEGRAM_MAX_MESSAGE_LENGTH:
-                                    logger.info(
-                                        f"Chat {chat_id} (Doc Final): Final segment (raw) too long. Using send_long_message_fallback.")
-                                    if placeholder_message.text != escape_markdown_v2(done_message_raw):
-                                        try:
-                                            await placeholder_message.edit_text(escape_markdown_v2(done_message_raw),
-                                                                                parse_mode=constants.ParseMode.MARKDOWN_V2)
-                                        except:
-                                            pass
-                                    await send_long_message_fallback(update, context, final_segment_raw)
-                                else:
-                                    await placeholder_message.edit_text(final_segment_raw, parse_mode=None)
-                                    logger.info(f"Chat {chat_id} (Doc Final): Final edit with RAW PLAIN successful.")
-                            except Exception as e_f_raw:
-                                logger.error(
-                                    f"Chat {chat_id} (Doc Final): All final edit attempts for current placeholder failed. Last error (raw plain): {e_f_raw}")
-
-                elif (placeholder_message.text == initial_placeholder_text_for_gemini_interaction or \
-                      (
-                              "continuing" in placeholder_message.text.lower() and initial_placeholder_text_for_gemini_interaction != placeholder_message.text)) and \
-                        full_raw_response_for_history.strip():
-                    # Case: No final segment for current placeholder, but overall response exists (likely all sent via fallback)
-                    # Update current placeholder to "Done"
+                                        f"Chat {chat_id} (Doc Final): Final edit with TRANSFORMED PLAIN fallback successful.")
+                                except BadRequest as e_f_plain_fb:
+                                    if "message is not modified" not in str(e_f_plain_fb).lower():
+                                        logger.error(
+                                            f"Chat {chat_id} (Doc Final): Final TRANSFORMED PLAIN fallback FAILED: {e_f_plain_fb}")
+                            else:
+                                logger.error(f"Chat {chat_id} (Doc Final): Final edit failed: {e_f_edit}")
+                elif placeholder_message.text == initial_placeholder_text_for_gemini_interaction and not full_raw_response_for_history.strip():
+                    no_gemini_resp_raw = get_template("gemini_no_response_document", user_lang_code,
+                                                      default_val="🤷 No analysis generated for the document.")
+                    try:
+                        await placeholder_message.edit_text(escape_markdown_v2(no_gemini_resp_raw),
+                                                            parse_mode=constants.ParseMode.MARKDOWN_V2)
+                    except:
+                        await placeholder_message.edit_text(no_gemini_resp_raw, parse_mode=None)
+                elif full_raw_response_for_history.strip():
+                    done_message_raw = get_template("response_complete", user_lang_code,
+                                                    default_val="✅ Analysis complete.")
                     try:
                         if placeholder_message.text != escape_markdown_v2(done_message_raw):
                             await placeholder_message.edit_text(escape_markdown_v2(done_message_raw),
                                                                 parse_mode=constants.ParseMode.MARKDOWN_V2)
-                    except BadRequest:
-                        pass
+                    except:
+                        if placeholder_message.text != done_message_raw:
+                            await placeholder_message.edit_text(done_message_raw, parse_mode=None)
 
-                elif placeholder_message.text == initial_placeholder_text_for_gemini_interaction and not full_raw_response_for_history.strip():
-                    # Case: Original snippet placeholder, and Gemini produced nothing at all
-                    no_gemini_resp_raw = get_template("gemini_no_response_document", user_lang_code,
-                                                      default_val="🤷 No analysis generated for the document.")
-                    try:
-                        if placeholder_message.text != escape_markdown_v2(no_gemini_resp_raw):
-                            await placeholder_message.edit_text(escape_markdown_v2(no_gemini_resp_raw),
-                                                                parse_mode=constants.ParseMode.MARKDOWN_V2)
-                    except BadRequest:
-                        pass
-
-                # Save to history
+                # --- Save to history ---
                 if full_raw_response_for_history.strip() and not any(
                         err_msg in full_raw_response_for_history.lower() for err_msg in
-                        ["sorry", "i can't", "unable to", "blocked", "guidelines"]):
-                    history_user_prompt = f"User uploaded document '{doc.file_name}' for analysis."
+                        ["sorry", "i can't", "unable to", "blocked", "guidelines", "cannot provide"]):
+                    history_user_prompt = f"User uploaded document '{(doc.file_name or "untitled")}' for analysis."
                     conversation_history.append({'role': 'user', 'parts': [{'text': history_user_prompt}]})
-                    conversation_history.append(
-                        {'role': 'model', 'parts': [{'text': full_raw_response_for_history}]})
+                    conversation_history.append({'role': 'model', 'parts': [{'text': full_raw_response_for_history}]})
                     context.chat_data['conversation_history'] = conversation_history[-MAX_CONVERSATION_TURNS * 2:]
                     logger.debug(
                         f"Chat {chat_id} (Doc): Conversation history updated. Length: {len(context.chat_data['conversation_history'])}.")
                 else:
                     logger.warning(
-                        f"Chat {chat_id} (Doc): Gemini response for document was empty or refusal-like. Not saving to history. Response: '{full_raw_response_for_history[:100]}...'")
+                        f"Chat {chat_id} (Doc): Gemini response was empty or refusal-like. Not saving. Preview: '{full_raw_response_for_history[:100].replace(chr(10), ' ')}...'")
 
-        except Exception as e_process:
-            logger.error(f"Error parsing or processing document '{doc.file_name}': {e_process}", exc_info=True)
+        except Exception as e_process_doc:
+            logger.error(f"Error processing document '{(doc.file_name or 'N/A')}': {e_process_doc}", exc_info=True)
+            # CORRECTED: Pass raw filename, then escape
             error_msg_raw = get_template("document_processing_error", user_lang_code,
-                                         file_name=escape_markdown_v2(doc.file_name))
-            if placeholder_message:  # Ensure placeholder exists
-                await placeholder_message.edit_text(escape_markdown_v2(error_msg_raw),
-                                                    parse_mode=constants.ParseMode.MARKDOWN_V2)
+                                         file_name=(doc.file_name or "the file"))
+            if placeholder_message:
+                try:
+                    await placeholder_message.edit_text(escape_markdown_v2(error_msg_raw),
+                                                        parse_mode=constants.ParseMode.MARKDOWN_V2)
+                except BadRequest:
+                    await placeholder_message.edit_text(error_msg_raw, parse_mode=None)
         finally:
+            if placeholder_message and placeholder_message.message_id in context.chat_data.get('mdv2_failed_for_msg_id',
+                                                                                               {}):
+                del context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id]
             if os.path.exists(temp_file_path):
                 try:
                     os.remove(temp_file_path)
                     logger.debug(f"Cleaned up temporary document: {temp_file_path}")
                 except Exception as e_remove:
                     logger.error(f"Error removing temporary document {temp_file_path}: {e_remove}")
-    else:  # Download failed
+    else:
+        # CORRECTED: Pass raw filename, then escape
         download_fail_raw = get_template("download_failed_error", user_lang_code,
-                                         file_name=escape_markdown_v2(doc.file_name or "document"))
-        if placeholder_message:  # Ensure placeholder exists
-            await placeholder_message.edit_text(escape_markdown_v2(download_fail_raw),
-                                                parse_mode=constants.ParseMode.MARKDOWN_V2)
-
+                                         file_name=(doc.file_name or "the document"))
+        if placeholder_message:
+            try:
+                await placeholder_message.edit_text(escape_markdown_v2(download_fail_raw),
+                                                    parse_mode=constants.ParseMode.MARKDOWN_V2)
+            except BadRequest:
+                await placeholder_message.edit_text(download_fail_raw, parse_mode=None)
+        else:
+            await update.message.reply_text(escape_markdown_v2(download_fail_raw),
+                                            parse_mode=constants.ParseMode.MARKDOWN_V2)
 
 def escape_markdown_v2(text: str) -> str:
     """
