@@ -1827,7 +1827,42 @@ TEMPLATES = {
         "uz": "...tahlil davom etmoqda...",
         "zh-TW": "...繼續分析...",
         "pt-PT": "...a continuar a análise..."
-    }
+    },
+    "error_temp_storage": {
+        "en": "⚠️ Server error: Cannot create temporary storage.",
+        "es": "⚠️ Error del servidor: no se puede crear almacenamiento temporal.",
+        "fr": "⚠️ Erreur du serveur : impossible de créer un stockage temporaire.",
+        "kk": "⚠️ Сервер қатесі: уақытша сақтау орнын жасау мүмкін емес.",
+        "de": "⚠️ Serverfehler: Temporärer Speicher kann nicht erstellt werden.",
+        "ru": "⚠️ Ошибка сервера: не удалось создать временное хранилище.",
+        "zh-CN": "⚠️ 服务器错误：无法创建临时存储。",
+        "ja": "⚠️ サーバーエラー：一時ストレージを作成できません。",
+        "ko": "⚠️ 서버 오류: 임시 저장소를 만들 수 없습니다.",
+        "pt-BR": "⚠️ Erro do servidor: não foi possível criar armazenamento temporário.",
+        "it": "⚠️ Errore del server: impossibile creare lo storage temporaneo.",
+        "ar": "⚠️ خطأ في الخادم: لا يمكن إنشاء وحدة تخزين مؤقتة.",
+        "hi": "⚠️ सर्वर त्रुटि: अस्थायी स्टोरेज नहीं बना सका।",
+        "tr": "⚠️ Sunucu hatası: Geçici depolama oluşturulamadı.",
+        "nl": "⚠️ Serverfout: kan tijdelijke opslag niet maken.",
+        "pl": "⚠️ Błąd serwera: nie można utworzyć tymczasowego magazynu.",
+        "sv": "⚠️ Serverfel: kan inte skapa tillfällig lagring.",
+        "fi": "⚠️ Palvelinvirhe: tilapäistä tallennustilaa ei voi luoda.",
+        "no": "⚠️ Serverfeil: kan ikke opprette midlertidig lagring.",
+        "da": "⚠️ Serverfejl: Kan ikke oprette midlertidig lager.",
+        "cs": "⚠️ Chyba serveru: Nelze vytvořit dočasné úložiště.",
+        "hu": "⚠️ Szerverhiba: nem hozható létre ideiglenes tároló.",
+        "ro": "⚠️ Eroare server: Nu se poate crea stocare temporară.",
+        "el": "⚠️ Σφάλμα διακομιστή: Δεν είναι δυνατή η δημιουργία προσωρινής αποθήκευσης.",
+        "he": "⚠️ שגיאת שרת: לא ניתן ליצור אחסון זמני.",
+        "th": "⚠️ ข้อผิดพลาดของเซิร์ฟเวอร์: ไม่สามารถสร้างที่จัดเก็บชั่วคราวได้",
+        "vi": "⚠️ Lỗi máy chủ: Không thể tạo bộ nhớ tạm thời.",
+        "id": "⚠️ Kesalahan server: Tidak dapat membuat penyimpanan sementara.",
+        "ms": "⚠️ Ralat pelayan: Tidak dapat mencipta storan sementara.",
+        "uk": "⚠️ Помилка сервера: не вдалося створити тимчасове сховище.",
+        "uz": "⚠️ Server xatosi: vaqtinchalik saqlashni yaratib bo‘lmadi.",
+        "zh-TW": "⚠️ 伺服器錯誤：無法建立暫存空間。",
+        "pt-PT": "⚠️ Erro do servidor: não foi possível criar armazenamento temporário."
+    },
     # Add more message keys as needed
 }
 
