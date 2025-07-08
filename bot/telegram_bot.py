@@ -95,6 +95,21 @@ DEFAULT_SYSTEM_PROMPT_BASE = os.getenv(
 
     **--- END OF CRITICAL INSTRUCTIONS ---**
 
+    **--- RESPONSE STRUCTURE AND READABILITY (MANDATORY) ---**
+    To ensure your answers are easy to study from, you MUST structure them for clarity. Avoid long, unbroken "walls of text".
+    - **Use Headings:** Use bold text (`*Heading*`) to introduce different sections of your answer.
+    - **Use Lists:** For steps, examples, or multiple points, ALWAYS use bulleted (`* `) or numbered (`1. `) lists.
+    - **Use Whitespace:** Separate distinct ideas and paragraphs with an empty line to give the text "breathing room".
+    - **Highlight Keywords:** Emphasize important terms using `*bold*` or `_italics_` to draw the user's attention.
+    - **Data Comparison:** When comparing items, present the information under separate, clearly bolded headings for each item.
+    - **DO NOT** create tables using plain text characters like `|` and `-`. This formatting breaks in chat applications.
+    - **INSTEAD**, if a table is needed, use proper Markdown table syntax. Example:
+      | Feature    | Item A    | Item B    |
+      |------------|-----------|-----------|
+      | Property   | Value A   | Value B   |
+
+    **--- END OF RESPONSE STRUCTURE INSTRUCTIONS ---**
+
 
     **Strict MarkdownV2 Formatting Rules (MANDATORY FOR CORRECT DISPLAY!):**
     Your response will be parsed by Telegram's MarkdownV2 engine. Failure to adhere to these rules WILL result in incorrect display or parsing errors.
@@ -225,15 +240,13 @@ async def download_telegram_file(bot_instance: telegram.Bot, file_id: str, local
         logger.error(f"Failed to download file {file_id}: {e}")
         return False
 
-
 async def _process_image(update: Update, context: ContextTypes.DEFAULT_TYPE, file_id: str, prompt_text: str):
     """
     A generic helper function to download, analyze, and stream a response for a given image file_id and prompt.
-    This contains the core logic for all image-related interactions.
+    This contains the core logic for all image-related interactions, including a watchdog timer on the stream.
     """
     user = update.effective_user
     chat_id = update.effective_chat.id
-    # Use a combination of user, chat, and file_id for a unique temporary filename
     message_id_for_uniqueness = update.message.message_id if update.message else 'reply'
     user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
 
@@ -247,10 +260,9 @@ async def _process_image(update: Update, context: ContextTypes.DEFAULT_TYPE, fil
             os.makedirs(TEMP_DIR)
         except OSError as e:
             logger.error(f"Could not create TEMP_DIR '{TEMP_DIR}': {e}")
-            error_msg_raw = get_template("error_temp_storage", user_lang_code,
-                                         default_val="⚠️ Server error: Cannot create temporary storage.")
-            await update.message.reply_text(escape_markdown_v2(error_msg_raw),
-                                            parse_mode=constants.ParseMode.MARKDOWN_V2)
+            err_msg_raw = get_template("error_temp_storage", user_lang_code,
+                                       default_val="⚠️ Server error: Cannot create temporary storage.")
+            await update.message.reply_text(escape_markdown_v2(err_msg_raw), parse_mode=constants.ParseMode.MARKDOWN_V2)
             return
 
     placeholder_message: Message | None = None
@@ -275,10 +287,8 @@ async def _process_image(update: Update, context: ContextTypes.DEFAULT_TYPE, fil
         try:
             image_bytes_content = None
             actual_mime_type = "image/jpeg"
-
             with open(temp_file_path, "rb") as image_file_bytes_io:
                 image_bytes_content = image_file_bytes_io.read()
-
             try:
                 with Image.open(io.BytesIO(image_bytes_content)) as pil_image:
                     image_format = pil_image.format
@@ -289,14 +299,12 @@ async def _process_image(update: Update, context: ContextTypes.DEFAULT_TYPE, fil
                     elif image_format == "WEBP":
                         actual_mime_type = "image/webp"
                     else:
-                        logger.warning(f"Unsupported image format {image_format}, attempting to convert to PNG.")
                         pil_image.seek(0)
                         with io.BytesIO() as img_byte_arr_converted:
                             pil_image.save(img_byte_arr_converted, format="PNG")
                             image_bytes_content = img_byte_arr_converted.getvalue()
                         actual_mime_type = "image/png"
             except UnidentifiedImageError:
-                logger.error(f"Pillow could not identify image format for {file_id}.")
                 err_raw = get_template("unidentified_image_error", user_lang_code,
                                        default_val="⚠️ Could not identify image format.")
                 await placeholder_message.edit_text(escape_markdown_v2(err_raw),
@@ -311,81 +319,61 @@ async def _process_image(update: Update, context: ContextTypes.DEFAULT_TYPE, fil
 
             initial_placeholder_text = placeholder_message.text
             current_message_text_on_telegram = placeholder_message.text
-            accumulated_raw_text_for_current_segment = ""
             full_raw_response_for_history = ""
-            last_edit_time = asyncio.get_event_loop().time()
+            stream_timed_out = False
 
-            async for chunk_raw in ask_gemini_vision_stream(
+            try:
+                response_generator = ask_gemini_vision_stream(
                     prompt_text=prompt_text, image_bytes=image_bytes_content, image_mime_type=actual_mime_type,
                     conversation_history=context.chat_data.get('conversation_history', []),
-                    system_prompt=system_prompt_for_vision):
-
-                full_raw_response_for_history += chunk_raw
-                accumulated_raw_text_for_current_segment += chunk_raw
-                current_time = asyncio.get_event_loop().time()
-
-                # This is where your robust, stateful streaming logic goes.
-                # It should be identical to the one in your perfected `handle_message` function.
-                # For brevity, I'll put a simplified version here, but you should use your full version.
-
-                current_placeholder_mdv2_has_failed_parsing = context.chat_data['mdv2_failed_for_msg_id'].get(
-                    placeholder_message.message_id, False)
-                should_edit_now = (
-                        current_message_text_on_telegram == initial_placeholder_text or
-                        current_time - last_edit_time >= STREAM_UPDATE_INTERVAL or
-                        len(chunk_raw) > 70
+                    system_prompt=system_prompt_for_vision
                 )
 
-                if accumulated_raw_text_for_current_segment.strip() and should_edit_now:
-                    raw_text_to_process = accumulated_raw_text_for_current_segment
-                    text_to_send, parse_mode = "", None
+                # Watchdog loop to process the stream with a timeout
+                while True:
+                    try:
+                        chunk_raw = await asyncio.wait_for(anext(response_generator), timeout=15.0)
+                        full_raw_response_for_history += chunk_raw
+                    except asyncio.TimeoutError:
+                        logger.warning(f"Stream for image {file_id} timed out after 15s of inactivity.")
+                        stream_timed_out = True
+                        break
+                    except StopAsyncIteration:
+                        logger.info("Stream finished normally.")
+                        break
 
-                    if current_placeholder_mdv2_has_failed_parsing:
-                        text_to_send = transform_markdown_fallback(raw_text_to_process)
-                        parse_mode = None
-                    else:
-                        text_to_send = escape_markdown_v2(raw_text_to_process)
-                        parse_mode = constants.ParseMode.MARKDOWN_V2
-
-                    if len(text_to_send) > TELEGRAM_MAX_MESSAGE_LENGTH:
-                        # Handle splitting logic...
-                        pass
-                    else:
-                        try:
-                            if text_to_send != current_message_text_on_telegram:
-                                await placeholder_message.edit_text(text_to_send, parse_mode=parse_mode)
-                                current_message_text_on_telegram = text_to_send
-                                current_placeholder_parse_mode = parse_mode
-                        except BadRequest as e:
-                            if parse_mode == constants.ParseMode.MARKDOWN_V2 and "Can't parse entities" in str(e):
-                                context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id] = True
-                                # Retry with plain text
-                                plain_text = transform_markdown_fallback(raw_text_to_process)
-                                if plain_text != current_message_text_on_telegram:
-                                    await placeholder_message.edit_text(plain_text, parse_mode=None)
-                                    current_message_text_on_telegram = plain_text
-                                    current_placeholder_parse_mode = None
-                            else:
-                                logger.warning(f"Failed to edit message during image stream: {e}")
-
-                    last_edit_time = current_time
-                    await asyncio.sleep(0.05)
+            except Exception as e_stream_init:
+                logger.error(f"Could not start or process the Gemini stream: {e_stream_init}")
+                full_raw_response_for_history = f"[AI ERROR: Failed to process response stream: {e_stream_init}]"
 
             # --- Final Edit and History Saving ---
-            final_segment_raw = accumulated_raw_text_for_current_segment.strip()
-            if final_segment_raw:
-                # Paste your full final edit logic here
-                pass
+            if stream_timed_out:
+                timeout_warning = get_template("stream_timeout_warning", user_lang_code,
+                                               default_val="\n\n[Warning: The response may be incomplete as the connection timed out.]")
+                full_raw_response_for_history += timeout_warning
 
-            # (Optional) Save to history
             if full_raw_response_for_history.strip():
+                # Perform one final edit with the complete (or timed-out) text
+                if full_raw_response_for_history != current_message_text_on_telegram:
+                    try:
+                        await placeholder_message.edit_text(escape_markdown_v2(full_raw_response_for_history),
+                                                            parse_mode=constants.ParseMode.MARKDOWN_V2)
+                    except BadRequest:
+                        await placeholder_message.edit_text(transform_markdown_fallback(full_raw_response_for_history),
+                                                            parse_mode=None)
+            else:
+                no_response_text_raw = get_template("gemini_no_vision_response", user_lang_code,
+                                                    default_val="🤷 I couldn't get a specific analysis for this image.")
+                await placeholder_message.edit_text(escape_markdown_v2(no_response_text_raw),
+                                                    parse_mode=constants.ParseMode.MARKDOWN_V2)
+
+            if full_raw_response_for_history.strip() and not stream_timed_out:
                 history_user_prompt = f"The user asked '{prompt_text[:50]}...' about an image."
                 conversation_history = context.chat_data.get('conversation_history', [])
                 conversation_history.append({'role': 'user', 'parts': [{'text': history_user_prompt}]})
                 conversation_history.append({'role': 'model', 'parts': [{'text': full_raw_response_for_history}]})
                 context.chat_data['conversation_history'] = conversation_history[-MAX_CONVERSATION_TURNS * 2:]
                 logger.debug(f"Chat {chat_id} (Photo): Vision analysis saved to conversation history.")
-
 
         except Exception as e:
             logger.error(f"Error processing image {file_id} with Vision: {e}", exc_info=True)
@@ -405,7 +393,6 @@ async def _process_image(update: Update, context: ContextTypes.DEFAULT_TYPE, fil
         err_raw = get_template("download_failed_error", user_lang_code, file_name="the image")
         await placeholder_message.edit_text(escape_markdown_v2(err_raw), parse_mode=constants.ParseMode.MARKDOWN_V2)
 
-
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Handles a new photo upload. It determines the initial prompt (from caption or default)
@@ -414,6 +401,9 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if not update.message or not update.message.photo:
         logger.warning("handle_photo called without a message or photo.")
         return
+
+    if 'mdv2_failed_for_msg_id' not in context.chat_data:
+        context.chat_data['mdv2_failed_for_msg_id'] = {}
 
     file_id = update.message.photo[-1].file_id
     user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
@@ -445,6 +435,9 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if not update.message or not update.message.document:
         logger.warning("handle_document called without a message or document.")
         return
+
+    if 'mdv2_failed_for_msg_id' not in context.chat_data:
+        context.chat_data['mdv2_failed_for_msg_id'] = {}
 
     user = update.effective_user
     doc = update.message.document
@@ -1275,6 +1268,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
 
+    if 'mdv2_failed_for_msg_id' not in context.chat_data:
+        context.chat_data['mdv2_failed_for_msg_id'] = {}
+
     # --- NEW: CONTEXTUAL REPLY ROUTING LOGIC ---
     if update.message.reply_to_message:
         replied_message = update.message.reply_to_message
@@ -1720,36 +1716,36 @@ async def all_updates_logger(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logger.critical(f"Raw Update of unhandled type in this logger: {update}")
 
 
-def get_application_with_persistence(persistence: BasePersistence) -> Application:
-    logger.info("Building Telegram application with persistence...")  # Log from bot.telegram_bot
+def add_all_handlers(application: "Application"):
+    """
+    Adds all the command, message, and callback handlers to the given application.
+    """
+    logger.info("Registering all application handlers...")
 
-    # --- Temporarily remove custom HTTPXRequest for diagnostics ---
-    # httpx_request = HTTPXRequest(http_version="1.1")
-    # application = Application.builder().token(TELEGRAM_BOT_TOKEN).persistence(persistence).request(
-    #     httpx_request).build()
+    # --- THE FIX IS HERE ---
+    # Use `setdefault` to initialize the dictionary if it doesn't exist.
+    # This is the correct way to modify the chat_data proxy.
+    # application.chat_data.setdefault('mdv2_failed_for_msg_id', {})
 
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).persistence(persistence).build()
-    logger.info(
-        f"Application built. Token used (last 6 chars): ...{TELEGRAM_BOT_TOKEN[-6:] if TELEGRAM_BOT_TOKEN and len(TELEGRAM_BOT_TOKEN) > 5 else 'TOKEN_TOO_SHORT_OR_NONE'}")
-
-    # --- Add the all_updates_logger as the VERY FIRST handler (group -1) ---
-    # This ensures it sees updates before any other handler, even if others consume the update.
-    # Using MessageHandler with filters.ALL to catch everything.
+    # The rest of the function is correct.
     application.add_handler(MessageHandler(filters.ALL, all_updates_logger), group=-1)
-    logger.info("Raw update logger (all_updates_logger) registered with group -1.")
+    logger.info("Raw update logger registered successfully.")
 
-    # Regular handlers
+    # --- Command Handlers ---
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("language", language_command))
+
+    # --- Callback Query Handlers ---
     application.add_handler(CallbackQueryHandler(language_set_callback_handler, pattern=r"^set_lang_"))
     application.add_handler(CallbackQueryHandler(language_page_callback_handler, pattern=r"^lang_page_"))
-    application.add_handler(CallbackQueryHandler(button_callback_handler))  # General catch-all for other buttons
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(CallbackQueryHandler(button_callback_handler))
+
+    # --- Message Handlers ---
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    logger.info("Application object and handlers registered in get_application_with_persistence.")  # Modified log
-    return application
+    logger.info("All command, callback, and message handlers have been successfully registered.")
 
 # --- END OF FILE telegram_bot.py ---

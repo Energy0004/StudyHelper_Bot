@@ -154,21 +154,48 @@ async def ask_gemini_vision_stream(
         conversation_history: List[Dict[str, Any]],
         system_prompt: str
 ) -> AsyncGenerator[str, None]:
+    """
+    Generates content from Gemini based on a prompt and an image, with robust
+    timeout handling to prevent getting stuck on slow connections.
+    """
     model_name = "gemini-1.5-flash-latest"
     logger.info(f"Using vision model: {model_name}")
     model = genai.GenerativeModel(model_name, system_instruction=system_prompt)
 
-    # Use PartDict here which is confirmed to be available in your environment
     image_part = PartDict(inline_data=PartDict(data=image_bytes, mime_type=image_mime_type))
     prompt_parts = [prompt_text, image_part]
 
     try:
-        response = await model.generate_content_async(prompt_parts, stream=True)
+        # --- NEW: Define request options with a 60-second timeout ---
+        request_options = {"timeout": 60}
+
+        # --- MODIFIED: Pass the request_options to the API call ---
+        response = await model.generate_content_async(
+            prompt_parts,
+            stream=True,
+            request_options=request_options
+        )
+
+        received_any_text = False
         async for chunk in response:
             if chunk.text:
+                received_any_text = True
                 yield chunk.text
+
+        # This handles the case where the stream finishes successfully but was empty.
+        if not received_any_text:
+            logger.warning("Gemini Vision stream completed but returned no text.")
+            yield "[AI could not generate a response for this image.]"
+
+    # --- NEW: Catch the specific timeout error ---
+    except asyncio.TimeoutError:
+        logger.error("Gemini Vision API call timed out after 60 seconds.",
+                     exc_info=False)  # No need for full traceback here
+        yield "\n\n[AI ERROR: The request to the AI service timed out. This may be due to a slow network connection or a very large image. Please try again.]"
+
     except Exception as e:
         logger.error(f"Error during Gemini Vision API call: {e}", exc_info=True)
+        # Your original error handling is good for other types of errors.
         yield f"\n\n[AI ERROR: Could not analyze the image. The AI service reported an error.]"
 
 # --- END OF FINAL bot/gemini_utils.py ---
