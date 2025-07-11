@@ -1,10 +1,13 @@
 # --- START OF FILE telegram_bot.py ---
 
 import re
+import time
 from collections import OrderedDict
 import os
 import logging
 import asyncio
+from functools import wraps
+from localization import COMMANDS
 from telegram import Update, constants, Message
 import fitz
 import telegram
@@ -59,6 +62,12 @@ except ImportError:
 
 TEMP_DIR = "temp_downloads"
 
+ADMIN_ID_STR = os.getenv("TELEGRAM_ADMIN_ID")
+ADMIN_ID = int(ADMIN_ID_STR) if ADMIN_ID_STR and ADMIN_ID_STR.isdigit() else None
+
+if not ADMIN_ID:
+    logger.warning("TELEGRAM_ADMIN_ID not found or invalid. Admin commands will not be available.")
+
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TELEGRAM_BOT_TOKEN:
     logger.critical("CRITICAL: TELEGRAM_BOT_TOKEN not found.")
@@ -96,17 +105,15 @@ DEFAULT_SYSTEM_PROMPT_BASE = os.getenv(
     **--- END OF CRITICAL INSTRUCTIONS ---**
 
     **--- RESPONSE STRUCTURE AND READABILITY (MANDATORY) ---**
-    To ensure your answers are easy to study from, you MUST structure them for clarity. Avoid long, unbroken "walls of text".
-    - **Use Headings:** Use bold text (`*Heading*`) to introduce different sections of your answer.
-    - **Use Lists:** For steps, examples, or multiple points, ALWAYS use bulleted (`* `) or numbered (`1. `) lists.
-    - **Use Whitespace:** Separate distinct ideas and paragraphs with an empty line to give the text "breathing room".
-    - **Highlight Keywords:** Emphasize important terms using `*bold*` or `_italics_` to draw the user's attention.
-    - **Data Comparison:** When comparing items, present the information under separate, clearly bolded headings for each item.
-    - **DO NOT** create tables using plain text characters like `|` and `-`. This formatting breaks in chat applications.
-    - **INSTEAD**, if a table is needed, use proper Markdown table syntax. Example:
-      | Feature    | Item A    | Item B    |
-      |------------|-----------|-----------|
-      | Property   | Value A   | Value B   |
+    To ensure your answers are easy to read and study from, you MUST structure your responses for maximum clarity. Avoid long, unbroken "walls of text".
+
+    *   **Use Headings:** Introduce different sections of a long answer with bolded headings (e.g., `*Key Concepts*`, `*Step-by-Step Solution*`). This helps the user navigate your response.
+    *   **Use Lists:** For sequences of steps, examples, or multiple points, ALWAYS use bulleted (`* ` or `- `) or numbered (`1. `) lists. This is much easier to read than a long paragraph.
+    *   **Emphasize Keywords:** Highlight the most important terms, definitions, or conclusions using `*bold*` or `_italics_` to draw the user's attention to key information.
+    *   **Use Whitespace:** Generously use empty lines to separate paragraphs, headings, and distinct ideas. This gives the text "breathing room" and prevents it from looking cramped.
+    *   **Keep Paragraphs Short:** Aim for short, focused paragraphs, each covering a single idea.
+    *   **Start with a Summary:** For complex topics, begin with a one or two-sentence summary (the "bottom line") before diving into the details.
+    *   **DO NOT Use Plain Text Tables:** Avoid creating tables using plain text characters like `|` and `-`. This formatting breaks easily in chat applications and looks unprofessional. If a table is truly necessary, use proper Markdown table syntax.
 
     **--- END OF RESPONSE STRUCTURE INSTRUCTIONS ---**
 
@@ -163,7 +170,11 @@ DEFAULT_SYSTEM_PROMPT_BASE = os.getenv(
     *   **Well-Formed Markdown:** All formatting pairs (`*...*`, `_..._`, `` `...` ``, `~...~`, `__...__`, `||...||`) must be correctly opened and closed. No unclosed entities.
 
     Please pay EXTREME attention to these formatting rules, especially the correct opening AND CLOSING of all formatting entities like italics, bold, code, etc., the spacing in lists, and the correct escaping of literal special characters. AVOID UNTERMINATED MARKDOWN ENTITIES. Your output's readability depends entirely on this.
-    If uncertain about a complex formatting, prefer simpler, well-formed Markdown or plain text for that segment."""
+    If uncertain about a complex formatting, prefer simpler, well-formed Markdown or plain text for that segment.
+
+    **--- ADD THIS NEW LINE HERE ---**
+    **Final Check:** Before finalizing your response, double-check that every `*`, `_`, `~`, `__`, and `` ` `` character is part of a correctly opened and closed pair, or is properly escaped with a `\` if it is meant to be a literal character.
+    """
 )
 TELEGRAM_MAX_MESSAGE_LENGTH = 4096
 STREAM_UPDATE_INTERVAL = 0.75
@@ -207,27 +218,70 @@ SUPPORTED_LANGUAGES = OrderedDict([
 DEFAULT_LANGUAGE_CODE = "en"
 LANGS_PER_PAGE = 6
 BUTTONS_PER_ROW = 2
+USER_REQUEST_COOLDOWN = 5
 
-SCRIPT_TO_LANG_MAP = {
-    "Latin": "eng",              # English, Spanish, French, German, Portuguese, Italian, Dutch, Polish, Swedish, Finnish, Norwegian, Danish, Romanian, Turkish, Hungarian, Czech, Malay, Indonesian
-    "Cyrillic": "rus",           # Russian, Ukrainian, Uzbek, Kazakh (assumes Russian is default for Cyrillic)
-    "Han": "chi_sim",            # Simplified Chinese
-    "Hant": "chi_tra",           # Traditional Chinese
-    "Hiragana": "jpn",           # Japanese
-    "Katakana": "jpn",           # Japanese
-    "Hangul": "kor",             # Korean
-    "Arabic": "ara",             # Arabic
-    "Devanagari": "hin",         # Hindi
-    "Greek": "ell",              # Greek
-    "Hebrew": "heb",             # Hebrew
-    "Thai": "tha",               # Thai
-    "Vietnamese": "vie",         # Vietnamese
-    "Bopomofo": "chi_tra",       # Taiwanese Chinese with Bopomofo
-    # Optional: Fallbacks or specific mappings
-    "Kana": "jpn",
-    "Common": "eng",             # For symbols, numbers, etc.
-    "Inherited": "eng",          # For diacritics or inherited marks
+TELEGRAM_COMMAND_LANG_MAP = {
+    "zh-CN": "zh",  # Simplified Chinese -> Chinese
+    "zh-TW": "zh",  # Traditional Chinese -> Chinese (will show simplified commands)
+    "pt-BR": "pt",  # Brazilian Portuguese -> Portuguese
+    "pt-PT": "pt",  # European Portuguese -> Portuguese
+    # All other standard two-letter codes like "en", "ru", "es", "de" are valid.
+    # We don't need to add them here.
 }
+
+def increment_stat(context: ContextTypes.DEFAULT_TYPE, stat_name: str, increment_by: int = 1):
+    """
+    Safely increments a statistic in context.bot_data.
+    """
+    if 'stats' not in context.bot_data:
+        context.bot_data['stats'] = {}
+
+    current_value = context.bot_data['stats'].get(stat_name, 0)
+    context.bot_data['stats'][stat_name] = current_value + increment_by
+
+def rate_limit(cooldown: int = USER_REQUEST_COOLDOWN):
+    """
+    A decorator to enforce a rate limit on a handler function.
+    """
+
+    def decorator(func):
+        @wraps(func)
+        async def wrapped(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+            now = time.time()
+            user_id = update.effective_user.id
+
+            # Use a different key for the timestamp to avoid conflicts
+            last_request_time = context.user_data.get('handler_last_request_time', 0)
+
+            if now - last_request_time < cooldown:
+                logger.warning(f"User {user_id} is being rate-limited for handler: {func.__name__}")
+
+                if not context.user_data.get('rate_limit_warning_sent', False):
+                    user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
+                    wait_message = get_template(
+                        "please_wait", user_lang_code,
+                        cooldown=cooldown,
+                        default_val=f"⏳ Please wait a moment. You can send a new request in {cooldown} seconds."
+                    )
+                    # Use a new message to avoid race conditions with placeholder edits
+                    await update.message.reply_text(wait_message)
+                    context.user_data['rate_limit_warning_sent'] = True
+                return
+
+            # If not rate-limited, reset the warning flag and proceed
+            context.user_data['rate_limit_warning_sent'] = False
+
+            # --- CRITICAL ---
+            # We call the actual handler function FIRST.
+            await func(update, context, *args, **kwargs)
+
+            # --- CRITICAL ---
+            # Only after the handler has completely finished its work, we update the timestamp.
+            context.user_data['handler_last_request_time'] = time.time()
+
+        return wrapped
+
+    return decorator
 
 # --- Helper to Download File ---
 async def download_telegram_file(bot_instance: telegram.Bot, file_id: str, local_filename: str) -> bool:
@@ -245,6 +299,8 @@ async def _process_image(update: Update, context: ContextTypes.DEFAULT_TYPE, fil
     A generic helper function to download, analyze, and stream a response for a given image file_id and prompt.
     This contains the core logic for all image-related interactions, including a watchdog timer on the stream.
     """
+    increment_stat(context, "images_received")
+
     user = update.effective_user
     chat_id = update.effective_chat.id
     message_id_for_uniqueness = update.message.message_id if update.message else 'reply'
@@ -393,6 +449,7 @@ async def _process_image(update: Update, context: ContextTypes.DEFAULT_TYPE, fil
         err_raw = get_template("download_failed_error", user_lang_code, file_name="the image")
         await placeholder_message.edit_text(escape_markdown_v2(err_raw), parse_mode=constants.ParseMode.MARKDOWN_V2)
 
+@rate_limit()
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Handles a new photo upload. It determines the initial prompt (from caption or default)
@@ -431,10 +488,13 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 # Or more specific document filters if you prefer.
 
 # --- Handler for Documents (PDF, DOCX, etc.) ---
+@rate_limit(cooldown=10)
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message or not update.message.document:
         logger.warning("handle_document called without a message or document.")
         return
+
+    increment_stat(context, "documents_received")
 
     if 'mdv2_failed_for_msg_id' not in context.chat_data:
         context.chat_data['mdv2_failed_for_msg_id'] = {}
@@ -841,6 +901,12 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     chat_id = update.effective_chat.id
 
+    if not context.user_data.get('has_started_before', False):
+        increment_stat(context, "new_users")
+        context.user_data['has_started_before'] = True
+    else:
+        increment_stat(context, "returning_users_start")
+
     user_telegram_lang_code = getattr(user, 'language_code', None)
     initial_bot_lang_code = DEFAULT_LANGUAGE_CODE
     greeting_lang_display_name = SUPPORTED_LANGUAGES.get(DEFAULT_LANGUAGE_CODE, "English").split(" (")[0]
@@ -901,6 +967,76 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(help_text_escaped, parse_mode=constants.ParseMode.MARKDOWN_V2)
 
+
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Displays bot usage statistics. Only accessible by the admin.
+    """
+    user_id = update.effective_user.id
+    if user_id != ADMIN_ID:
+        logger.warning(f"User {user_id} (not admin) tried to access /stats command.")
+        return  # Silently ignore non-admin users
+
+    logger.info(f"Admin user {user_id} requested bot stats.")
+
+    stats = context.bot_data.get('stats', {})
+
+    # Get the individual stats, with a default of 0 if they don't exist yet
+    messages = stats.get("messages_received", 0)
+    images = stats.get("images_received", 0)
+    documents = stats.get("documents_received", 0)
+    searches = stats.get("web_searches", 0)
+    new_users = stats.get("new_users", 0)
+
+    # Format the stats into a nice message
+    stats_text = (
+        f"*📊 Bot Usage Statistics*\n\n"
+        f"⚪️ *Total Interactions:*\n"
+        f"  - Messages Received: `{messages}`\n"
+        f"  - Images Received: `{images}`\n"
+        f"  - Documents Received: `{documents}`\n\n"
+        f"⚙️ *API Usage:*\n"
+        f"  - Web Searches Performed: `{searches}`\n\n"
+        f"👤 *User Metrics:*\n"
+        f"  - New Users Started: `{new_users}`"
+    )
+
+    await update.message.reply_text(
+        escape_markdown_v2(stats_text),
+        parse_mode=constants.ParseMode.MARKDOWN_V2
+    )
+
+async def new_chat_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Resets the conversation history for the current chat.
+    """
+    user = update.effective_user
+    chat_id = update.effective_chat.id
+    logger.info(f"Chat {chat_id}: User {user.id} initiated a new chat with /new command.")
+
+    # Pop the conversation history from chat_data
+    if 'conversation_history' in context.chat_data:
+        context.chat_data.pop('conversation_history')
+        logger.info(f"Chat {chat_id}: Conversation history cleared.")
+    else:
+        logger.info(f"Chat {chat_id}: No conversation history found to clear.")
+
+    # Get user's language for the confirmation message
+    user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
+
+    # Prepare and send the confirmation message
+    confirmation_raw = get_template("new_chat_confirmation", user_lang_code,
+                                    default_val="✅ New chat started. Your conversation history has been cleared. How can I help you today?")
+    confirmation_escaped = escape_markdown_v2(confirmation_raw)
+
+    try:
+        await update.message.reply_text(confirmation_escaped, parse_mode=constants.ParseMode.MARKDOWN_V2)
+    except BadRequest as e:
+        logger.warning(
+            f"Chat {chat_id}: Failed to send MDV2 confirmation for new chat. Error: {e}. Falling back to plain text.")
+        await update.message.reply_text(confirmation_raw, parse_mode=None)
+    except Exception as e:
+        logger.error(f"Chat {chat_id}: Unexpected error sending new chat confirmation: {e}", exc_info=True)
 
 def build_language_keyboard(page: int = 0, target_lang_code: str = DEFAULT_LOC_LANG) -> InlineKeyboardMarkup:
     """Builds the paginated language keyboard with localized navigation buttons."""
@@ -1117,148 +1253,73 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
 
 def transform_markdown_fallback(text: str) -> str:
     """
-    Transforms Gemini's Markdown-like output into a plainer text format
-    when MarkdownV2 parsing fails or is undesirable.
-    Converts headings, lists, bold, italics to simpler plain text representations.
-    Includes a step to neutralize potentially problematic standalone underscores.
+    Transforms Gemini's Markdown-like output into a more readable plain text format
+    by safely removing or replacing Markdown V2 special characters, preserving as much
+    of the original structure and intent as possible.
     """
-    if not text:
+    if not isinstance(text, str):
         return ""
 
-    # Use a passed-in logger or a default one if not available globally
-    # This is safer if the function is ever moved or used in a different context.
-    # For now, assuming 'logger' is available from the global scope of telegram_bot.py
-    _logger = logger
+    # Assuming 'logger' is available from the global scope of telegram_bot.py
+    logger.debug(f"Transforming text for 'smarter' fallback. Original starts: '{text[:100].replace(chr(10), ' ')}...'")
 
-    _logger.debug(f"Transforming text for fallback. Original starts: '{text[:100].replace(chr(10), ' ')}...'")
+    # --- Initial Cleanup ---
+    # Normalize line endings to prevent regex issues.
+    transformed_text = text.replace('\r\n', '\n')
 
-    transformed_text = text
-
-    # 0. Normalize line endings (do this early)
-    transformed_text = transformed_text.replace('\r\n', '\n')
-
-    # NEW STEP A: Attempt to neutralize problematic underscores.
-    UNDERSCORE_PLACEHOLDER = "❮USPH❯"
-    transformed_text = re.sub(r'(?<=\w)_(?=\w)', UNDERSCORE_PLACEHOLDER, transformed_text)
-
-    # 1. Strip leading/trailing whitespace from the whole text AFTER initial underscore handling
-    transformed_text = transformed_text.strip()
-
-    # 2. Handle code blocks (simple removal of backticks, keep content)
-    # Important: Do this before italic/bold processing to protect content within code blocks.
+    # --- Code Blocks and Inline Code (Keep Content, Remove Ticks) ---
+    # Process multi-line blocks first to avoid conflicts with inline code.
     transformed_text = re.sub(r'```(?:[a-zA-Z0-9_.-]*)?\n(.*?)\n```', r'\1', transformed_text,
                               flags=re.DOTALL | re.MULTILINE)
-    # --- THIS WAS THE LINE WITH THE ERROR ---
-    transformed_text = re.sub(r'```(.*?)```', r'\1', transformed_text, flags=re.DOTALL)  # Simpler ```code```
-    # --- END OF FIX ---
-    transformed_text = re.sub(r'`(.*?)`', r'\1', transformed_text)  # Inline `code`
+    transformed_text = re.sub(r'```(.*?)```', r'\1', transformed_text, flags=re.DOTALL)
+    # Just remove the backticks from inline code.
+    transformed_text = re.sub(r'`(.*?)`', r'\1', transformed_text)
 
-    # 4. Handle bold and italics (Order can matter)
-    # Process paired underscores/asterisks first
-    transformed_text = re.sub(r'\*\*(.*?)\*\*', r'"\1"', transformed_text)  # **bold** to "bold"
-    transformed_text = re.sub(r'__(.*?)__', r'"\1"',
-                              transformed_text)  # __underline__ to "quoted" (often used as alternative bold)
+    # --- Headings (Remove Hashtags, Keep Text) ---
+    # Let the surrounding newlines provide the visual separation for headings.
+    transformed_text = re.sub(r'^\s*#{1,6}\s*(.*?)\s*$', r'\1', transformed_text, flags=re.MULTILINE)
 
-    # For single asterisks/underscores for italics:
-    transformed_text = re.sub(r'\*(.*?)\*', r'\1', transformed_text)  # *italic* to plain
-    transformed_text = re.sub(r'_(.*?)_', r'\1', transformed_text)  # _italic_ to plain
+    # --- Links (Extract URL) ---
+    # Convert [Link Text](http://example.com) to "Link Text (http://example.com)"
+    # This preserves all information in a readable, non-Markdown format.
+    transformed_text = re.sub(r'\[(.*?)\]\((.*?)\)', r'\1 (\2)', transformed_text)
 
-    # NEW STEP B: Convert placeholder back to underscores
-    transformed_text = transformed_text.replace(UNDERSCORE_PLACEHOLDER, "_")
+    # --- Bold, Italics, Strikethrough (Remove Formatting, Keep Text) ---
+    # The order is important: process multi-character markers before single ones.
+    transformed_text = re.sub(r'\*\*(.*?)\*\*', r'\1', transformed_text)  # **bold** -> bold
+    transformed_text = re.sub(r'__(.*?)__', r'\1', transformed_text)  # __underline__ -> underline
+    transformed_text = re.sub(r'\*(.*?)\*', r'\1', transformed_text)  # *italic* -> italic
+    transformed_text = re.sub(r'_(.*?)_', r'\1', transformed_text)  # _italic_ -> italic
+    transformed_text = re.sub(r'~(.*?)~', r'\1', transformed_text)  # ~strikethrough~ -> strikethrough
+    transformed_text = re.sub(r'\|\|(.*?)\|\|', r'\1', transformed_text)  # ||spoiler|| -> spoiler
 
-    # 5. Handle strikethrough ~strikethrough~ (remove it)
-    transformed_text = re.sub(r'~(.*?)~', r'\1', transformed_text)
-
-    # 6. Handle headings (###, ##, #) by making them "Quoted Title:"
-    transformed_text = re.sub(r'^\s*###\s*(.*?)\s*$', r'"\1:"', transformed_text, flags=re.MULTILINE)
-    transformed_text = re.sub(r'^\s*##\s*(.*?)\s*$', r'"\1:"', transformed_text, flags=re.MULTILINE)
-    transformed_text = re.sub(r'^\s*#\s*(.*?)\s*$', r'"\1:"', transformed_text, flags=re.MULTILINE)
-
-    # 7. Process lists and renumber them consistently
-    lines = transformed_text.splitlines()
+    # --- Lists (Preserve Structure with Safe Characters) ---
+    # This approach is simpler and more robust than re-numbering.
+    lines = transformed_text.split('\n')
     processed_lines = []
-    list_item_counter = 0
-    in_list_context = False
+    for line in lines:
+        # Match and replace bulleted list markers (*, -, +)
+        stripped_line = line.lstrip()
+        indentation_str = ' ' * (len(line) - len(stripped_line))
 
-    for i, line in enumerate(lines):
-        stripped_line = line.strip()
-        bullet_match = re.match(r"^(\s*)(?:[*\-+]|\u2022)\s+(.*)", line)
-        numbered_list_match = re.match(r"^(\s*)(\d+)\.\s+(.*)", line)
-
-        item_content = ""
-
-        if bullet_match:
-            indentation = bullet_match.group(1)
-            original_content = bullet_match.group(2).strip()
-
-            if not original_content:
-                if in_list_context:
-                    processed_lines.append(indentation.rstrip('\n'))
-                continue
-
-            item_content = original_content
-            is_new_list_block = True
-            if processed_lines:
-                for j in range(len(processed_lines) - 1, -1, -1):
-                    if processed_lines[j].strip():
-                        if re.match(r"^\s*\d+\.\s+", processed_lines[j]):
-                            is_new_list_block = False
-                        break
-
-            if is_new_list_block:
-                list_item_counter = 1
-            else:
-                list_item_counter += 1
-
-            item_content_final = re.sub(r'^("[^"]+:")(\S)', r'\1 \2', item_content)
-            processed_lines.append(f"{indentation}{list_item_counter}. {item_content_final}")
-            in_list_context = True
-
-        elif numbered_list_match:
-            indentation = numbered_list_match.group(1)
-            original_number_str = numbered_list_match.group(2)
-            original_content = numbered_list_match.group(3).strip()
-
-            if not original_content:
-                if in_list_context:
-                    processed_lines.append(indentation.rstrip('\n'))
-                continue
-
-            item_content = original_content
-            is_new_list_block = True
-            current_item_number_from_text = int(original_number_str)
-
-            if processed_lines:
-                for j in range(len(processed_lines) - 1, -1, -1):
-                    if processed_lines[j].strip():
-                        if re.match(r"^\s*\d+\.\s+", processed_lines[j]):
-                            is_new_list_block = False
-                        break
-
-            if is_new_list_block:
-                list_item_counter = current_item_number_from_text
-            else:
-                list_item_counter += 1
-
-            item_content_final = re.sub(r'^("[^"]+:")(\S)', r'\1 \2', item_content)
-            processed_lines.append(f"{indentation}{list_item_counter}. {item_content_final}")
-            in_list_context = True
+        if stripped_line.startswith(('* ', '- ', '+ ')):
+            # Replace the Markdown marker with a safe, visually appealing bullet character.
+            processed_lines.append(indentation_str + '• ' + stripped_line[2:])
         else:
-            if stripped_line:
-                processed_lines.append(line)
-            elif processed_lines and processed_lines[-1].strip():
-                processed_lines.append("")
-            in_list_context = False
+            # Keep numbered lists and all other lines as they are.
+            # Numbered lists are generally safe and readable in plain text.
+            processed_lines.append(line)
 
     transformed_text_final = "\n".join(processed_lines)
 
-    # 8. Final cleanup:
+    # --- Final Cleanup ---
+    # Collapse more than two consecutive newlines into just two to maintain paragraph spacing.
     transformed_text_final = re.sub(r'\n{3,}', '\n\n', transformed_text_final)
 
-    _logger.debug(f"Transformed text fallback result starts: '{transformed_text_final[:100].replace(chr(10), ' ')}...'")
+    logger.debug(f"Smarter fallback result starts: '{transformed_text_final[:100].replace(chr(10), ' ')}...'")
     return transformed_text_final.strip()
 
-
+@rate_limit()
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handles all incoming text messages. Acts as a router to determine if the message
@@ -1267,6 +1328,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Preliminary check to ensure there's a message to process.
     if not update.message:
         return
+
+    increment_stat(context, "messages_received")
 
     if 'mdv2_failed_for_msg_id' not in context.chat_data:
         context.chat_data['mdv2_failed_for_msg_id'] = {}
@@ -1347,6 +1410,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.info(f"Chat {chat_id}: Received tool call signal for '{tool_name}'.")
 
                 if tool_name == "perform_web_search":
+                    increment_stat(context, "web_searches")
                     searching_raw = get_template("searching_web", user_lang_code, default_val="Searching the web... 🌐")
                     try:
                         await placeholder_message.edit_text(escape_markdown_v2(searching_raw),
@@ -1683,18 +1747,44 @@ async def send_long_message_fallback(update: Update,
 
     return last_sent_message_object
 
-async def set_bot_commands(application: Application):
-    commands = [
-        BotCommand("start", "Welcome & clear chat history option"),
-        BotCommand("help", "Show help message and commands"),
-        BotCommand("language", "Choose your preferred language"),
-    ]
-    try:
-        await application.bot.set_my_commands(commands)
-        logger.info("Bot commands successfully set/updated.")
-    except Exception as e:
-        logger.error(f"Failed to set bot commands: {e}")
 
+async def set_bot_commands(application: Application):
+    """
+    Sets the bot's commands for multiple languages, mapping to Telegram's
+    supported language codes and gracefully skipping any that are invalid.
+    """
+    # 1. Set the default commands in English first as a fallback
+    try:
+        default_commands = [BotCommand(cmd, desc) for cmd, desc in COMMANDS.get("en", [])]
+        if default_commands:
+            await application.bot.set_my_commands(default_commands)
+            logger.info("Default bot commands (English) have been successfully set.")
+    except Exception as e:
+        logger.error(f"Failed to set default English commands: {e}", exc_info=True)
+
+    # 2. Loop through all other languages and attempt to set their specific commands
+    for lang_code, commands_list in COMMANDS.items():
+        if lang_code == "en":
+            continue
+
+        # Use a try-except block for each language to prevent one bad code from crashing the whole process
+        try:
+            telegram_lang_code = TELEGRAM_COMMAND_LANG_MAP.get(lang_code, lang_code)
+
+            bot_commands = [BotCommand(cmd, desc) for cmd, desc in commands_list]
+
+            if bot_commands:
+                await application.bot.set_my_commands(bot_commands, language_code=telegram_lang_code)
+                logger.info(f"Commands for language '{lang_code}' (as '{telegram_lang_code}') have been set.")
+
+        except BadRequest as e:
+            if "language code is not supported" in str(e) or "invalid language code" in str(e).lower():
+                logger.warning(
+                    f"Telegram does not support command localization for language code '{lang_code}' (mapped to '{telegram_lang_code}'). Skipping.")
+            else:
+                logger.error(f"A BadRequest occurred while setting commands for '{lang_code}': {e}")
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while setting commands for '{lang_code}': {e}", exc_info=True)
 
 # <<< NEW FUNCTION TO LOG ALL UPDATES >>>
 async def all_updates_logger(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1732,9 +1822,13 @@ def add_all_handlers(application: "Application"):
     logger.info("Raw update logger registered successfully.")
 
     # --- Command Handlers ---
+    if ADMIN_ID:
+        application.add_handler(CommandHandler("stats", stats_command, filters=filters.User(user_id=ADMIN_ID)))
+
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("language", language_command))
+    application.add_handler(CommandHandler("new", new_chat_command))
 
     # --- Callback Query Handlers ---
     application.add_handler(CallbackQueryHandler(language_set_callback_handler, pattern=r"^set_lang_"))
