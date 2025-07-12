@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 # --- Import Bot Logic ---
 try:
     from telegram import Update
+    # ## ADDED HTTPXRequest FOR CUSTOM TIMEOUTS ##
+    from telegram.request import HTTPXRequest
     from telegram.ext import ContextTypes, ApplicationBuilder, PicklePersistence
     from bot.telegram_bot import add_all_handlers, set_bot_commands
     from bot.persistence import create_persistence_instance
@@ -72,12 +74,18 @@ def main() -> None:
     # 1. Create the persistence object
     persistence = create_persistence_instance()
 
+    # ## ADDED: Configure custom request timeouts for better network resilience ##
+    # The default of 5s can be too short, causing 'TimedOut' errors during startup.
+    # We increase the connection timeout to 10s and the read timeout to 20s.
+    request = HTTPXRequest(connect_timeout=10.0, read_timeout=20.0)
+
     # 2. Use the ApplicationBuilder to construct the bot
     application = (
         ApplicationBuilder()
         .token(os.getenv("TELEGRAM_BOT_TOKEN"))
         .persistence(persistence)
-        .post_init(post_init_tasks)  # Register our setup function
+        .request(request)  # ## MODIFIED: Pass the custom request object ##
+        .post_init(post_init_tasks)
         .build()
     )
 
