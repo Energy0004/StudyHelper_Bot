@@ -7,6 +7,10 @@ import os
 import logging
 import asyncio
 from functools import wraps
+
+import requests
+from bs4 import BeautifulSoup
+
 from localization import COMMANDS
 from telegram import Update, constants, Message
 import fitz
@@ -229,6 +233,61 @@ TELEGRAM_COMMAND_LANG_MAP = {
     # We don't need to add them here.
 }
 
+def build_feedback_keyboard(message_id: int) -> InlineKeyboardMarkup:
+    """Builds the feedback keyboard for a given message."""
+    keyboard = [[
+        InlineKeyboardButton("👍", callback_data=f"feedback:up:{message_id}"),
+        InlineKeyboardButton("👎", callback_data=f"feedback:down:{message_id}")
+    ]]
+    return InlineKeyboardMarkup(keyboard)
+
+
+async def feedback_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handles 👍 and 👎 feedback button presses."""
+    query = update.callback_query
+
+    try:
+        # Expected format: "feedback:<vote>:<message_id>"
+        _, vote, message_id_str = query.data.split(':')
+        message_id = int(message_id_str)
+    except (ValueError, IndexError):
+        logger.error(f"Invalid feedback callback data format: {query.data}")
+        await query.answer("Error processing feedback.", show_alert=True)
+        return
+
+    user_id = query.from_user.id
+    logger.info(f"Feedback received: User {user_id} voted '{vote}' on message {message_id}.")
+
+    # Increment stats for tracking
+    if vote == 'up':
+        increment_stat(context, "feedback_positive")
+    elif vote == 'down':
+        increment_stat(context, "feedback_negative")
+
+    # Get localized "thank you" message for the toast notification
+    user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
+    feedback_thanks_raw = get_template(
+        "feedback_thanks",
+        user_lang_code,
+        default_val="Thank you for your feedback!"
+    )
+
+    try:
+        # Acknowledge the press and remove the buttons from the message
+        await query.edit_message_reply_markup(reply_markup=None)
+        # Show a confirmation toast to the user
+        await query.answer(text=feedback_thanks_raw)
+    except BadRequest as e:
+        if "message to edit not found" in str(e).lower():
+            logger.warning(f"Could not find message {message_id} to remove feedback buttons. It may have been deleted.")
+            await query.answer("Message not found.", show_alert=True)
+        elif "message is not modified" in str(e).lower():
+            # User might have clicked the same button twice. Silently acknowledge.
+            await query.answer()
+        else:
+            logger.error(f"Error editing message to remove feedback buttons for message {message_id}: {e}")
+            await query.answer("Could not update message.", show_alert=True)
+
 def increment_stat(context: ContextTypes.DEFAULT_TYPE, stat_name: str, increment_by: int = 1):
     """
     Safely increments a statistic in context.bot_data.
@@ -412,11 +471,15 @@ async def _process_image(update: Update, context: ContextTypes.DEFAULT_TYPE, fil
                 # Perform one final edit with the complete (or timed-out) text
                 if full_raw_response_for_history != current_message_text_on_telegram:
                     try:
+                        feedback_keyboard = build_feedback_keyboard(placeholder_message.message_id)
                         await placeholder_message.edit_text(escape_markdown_v2(full_raw_response_for_history),
-                                                            parse_mode=constants.ParseMode.MARKDOWN_V2)
+                                                            parse_mode=constants.ParseMode.MARKDOWN_V2,
+                                                            reply_markup=feedback_keyboard)
                     except BadRequest:
+                        afeedback_keyboard = build_feedback_keyboard(placeholder_message.message_id)
                         await placeholder_message.edit_text(transform_markdown_fallback(full_raw_response_for_history),
-                                                            parse_mode=None)
+                                                            parse_mode=None,
+                                                            reply_markup=feedback_keyboard)
             else:
                 no_response_text_raw = get_template("gemini_no_vision_response", user_lang_code,
                                                     default_val="🤷 I couldn't get a specific analysis for this image.")
@@ -448,6 +511,167 @@ async def _process_image(update: Update, context: ContextTypes.DEFAULT_TYPE, fil
     else:  # Download failed
         err_raw = get_template("download_failed_error", user_lang_code, file_name="the image")
         await placeholder_message.edit_text(escape_markdown_v2(err_raw), parse_mode=constants.ParseMode.MARKDOWN_V2)
+
+
+async def _process_url(update: Update, context: ContextTypes.DEFAULT_TYPE, url: str):
+    """
+    Fetches, parses, and summarizes a URL using the robust "Plain Text Stream, Final Markdown" strategy.
+    """
+    chat_id = update.effective_chat.id
+    user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
+
+    # 1. Send initial placeholder
+    placeholder_text = get_template("fetching_url", user_lang_code, default_val="Fetching content from URL... 🌐")
+    try:
+        placeholder_message = await update.message.reply_text(escape_markdown_v2(placeholder_text),
+                                                              parse_mode=constants.ParseMode.MARKDOWN_V2)
+    except BadRequest:
+        placeholder_message = await update.message.reply_text(placeholder_text)
+
+    # 2. Fetch and parse URL content (This part is correct and remains unchanged)
+    extracted_text = ""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+        if 'text/html' not in response.headers.get('Content-Type', ''):
+            error_text = get_template("url_not_html", user_lang_code,
+                                      default_val="⚠️ The link does not point to an HTML page.")
+            await placeholder_message.edit_text(escape_markdown_v2(error_text),
+                                                parse_mode=constants.ParseMode.MARKDOWN_V2)
+            return
+        soup = BeautifulSoup(response.content, 'html.parser')
+        paragraphs = soup.find_all('p')
+        extracted_text = ' '.join(p.get_text(strip=True) for p in paragraphs)
+        if not extracted_text:
+            error_text = get_template("url_no_text", user_lang_code,
+                                      default_val="🤷 I couldn't find any readable text at that URL.")
+            await placeholder_message.edit_text(escape_markdown_v2(error_text),
+                                                parse_mode=constants.ParseMode.MARKDOWN_V2)
+            return
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to fetch URL {url}: {e}", exc_info=True)
+        error_text = get_template("url_fetch_error", user_lang_code, default_val="❌ Sorry, I couldn't access that URL.")
+        await placeholder_message.edit_text(escape_markdown_v2(error_text), parse_mode=constants.ParseMode.MARKDOWN_V2)
+        return
+
+    # 3. Prepare for Gemini summary
+    summarizing_text = get_template("summarizing_url", user_lang_code, default_val="Content extracted! Summarizing...")
+    await placeholder_message.edit_text(escape_markdown_v2(summarizing_text),
+                                        parse_mode=constants.ParseMode.MARKDOWN_V2)
+
+    max_chars_for_prompt = 20000
+    truncated_text = extracted_text[:max_chars_for_prompt]
+    context.chat_data['last_url_content'] = extracted_text
+    context.chat_data['last_url_source'] = url
+    logger.info(f"Chat {chat_id}: Stored {len(extracted_text)} chars from {url} for follow-up questions.")
+
+    language_name_for_prompt = SUPPORTED_LANGUAGES.get(user_lang_code, "English").split(" (")[0]
+    system_prompt_for_url = (
+        f"{DEFAULT_SYSTEM_PROMPT_BASE}\n\nCRITICAL: Please provide your entire response in {language_name_for_prompt}.")
+    summary_prompt = (
+        f"Please provide a concise summary of the following article... Here is the text:\n\n---\n\n{truncated_text}\n---")
+
+    # 4. Robust Streaming and Final Edit Logic
+    try:
+        current_message_text_on_telegram = placeholder_message.text
+        accumulated_raw_text = ""
+        last_edit_time = asyncio.get_event_loop().time()
+
+        # --- STREAMING LOOP (PLAIN TEXT ONLY) ---
+        async for chunk_raw in ask_gemini_stream(summary_prompt, [], system_prompt_for_url):
+            accumulated_raw_text += chunk_raw
+            current_time = asyncio.get_event_loop().time()
+
+            if current_time - last_edit_time >= STREAM_UPDATE_INTERVAL:
+                # Use transform_markdown_fallback to create a clean, plain text stream
+                plain_text_stream = transform_markdown_fallback(accumulated_raw_text)
+                if plain_text_stream.strip() and plain_text_stream != current_message_text_on_telegram:
+                    try:
+                        await placeholder_message.edit_text(plain_text_stream, parse_mode=None)
+                        current_message_text_on_telegram = plain_text_stream
+                    except BadRequest as e:
+                        if "message is not modified" not in str(e).lower():
+                            logger.warning(f"URL Summary Stream (Plain): Edit failed. Error: {e}")
+                last_edit_time = current_time
+
+        # --- FINAL EDIT (ATTEMPT MARKDOWN) ---
+        if accumulated_raw_text.strip():
+            final_raw_text = accumulated_raw_text
+            feedback_keyboard = build_feedback_keyboard(placeholder_message.message_id)
+
+            # First, try to send with beautiful MarkdownV2
+            try:
+                escaped_final_text = escape_markdown_v2(final_raw_text)
+                if len(escaped_final_text) > TELEGRAM_MAX_MESSAGE_LENGTH:
+                    logger.info("Final summary (MD) is too long, using send_long_message_fallback.")
+                    await send_long_message_fallback(update, context, final_raw_text)
+                else:
+                    await placeholder_message.edit_text(escaped_final_text, parse_mode=constants.ParseMode.MARKDOWN_V2,
+                                                        reply_markup=feedback_keyboard)
+
+            except BadRequest:
+                # If MarkdownV2 fails for any reason, fall back to sending clean plain text
+                logger.warning("Final MDV2 edit failed. Sending as transformed plain text.")
+                plain_final_text = transform_markdown_fallback(final_raw_text)
+                if len(plain_final_text) > TELEGRAM_MAX_MESSAGE_LENGTH:
+                    logger.info("Final summary (Plain) is too long, using send_long_message_fallback.")
+                    await send_long_message_fallback(update, context,
+                                                     final_raw_text)  # send_long_message_fallback already uses plain text
+                else:
+                    await placeholder_message.edit_text(plain_final_text, parse_mode=None,
+                                                        reply_markup=feedback_keyboard)
+        else:
+            raise ValueError("No summary generated by model")
+
+    except Exception as e:
+        logger.error(f"Error during summary stream/edit for URL {url}: {e}", exc_info=True)
+        # CORRECTED THE TYPO ON THE NEXT LINE:
+        error_text = get_template("url_summary_error", user_lang_code,
+                                  default_val="I couldn't generate a summary for that content.")
+        try:
+            await placeholder_message.edit_text(escape_markdown_v2(error_text),
+                                                parse_mode=constants.ParseMode.MARKDOWN_V2)
+        except Exception:
+            pass
+
+# NEW HELPER FUNCTION 2: To handle follow-up questions
+async def _process_url_follow_up(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles a follow-up question about the last processed URL.
+    """
+    user_question = update.message.text
+    stored_text = context.chat_data.get('last_url_content')
+    url_source = context.chat_data.get('last_url_source', 'the last article')
+
+    user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
+    language_name_for_prompt = SUPPORTED_LANGUAGES.get(user_lang_code, "English").split(" (")[0]
+
+    logger.info(f"Handling follow-up question for URL: {url_source} in {language_name_for_prompt}")
+
+    follow_up_prompt = (
+        f"The user is asking a follow-up question in {language_name_for_prompt} about an article from {url_source}. "
+        f"Please answer their question in {language_name_for_prompt}, based *only* on the provided article content.\n\n"
+        f"User's question: '{user_question}'.\n\n"
+        f"FULL original text of the article for context: \n\n---\n\n{stored_text}\n---"
+    )
+
+    # Since this is a follow-up, we can reuse the main handle_message logic.
+    # To avoid code duplication, we'll just modify the prompt and let handle_message do the rest.
+    # A cleaner but more complex way would be to refactor handle_message's streaming logic
+    # into its own helper that both can call. For now, this is a pragmatic solution.
+
+    # To prevent re-triggering this logic, we clear the context before calling the main handler
+    context.chat_data.pop('last_url_content', None)
+    context.chat_data.pop('last_url_source', None)
+
+    # Create a "fake" update with the new, combined prompt to pass to the main handler
+    fake_update = update
+    fake_update.message.text = follow_up_prompt
+
+    # Directly call the main message handler with our new prompt
+    await handle_message(fake_update, context)
 
 @rate_limit()
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -785,8 +1009,10 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                     else:
                         try:
                             if text_for_final_edit != current_message_text_on_telegram:
+                                feedback_keyboard = build_feedback_keyboard(placeholder_message.message_id)
                                 await placeholder_message.edit_text(text_for_final_edit,
-                                                                    parse_mode=parse_mode_for_final_edit_attempt)
+                                                                    parse_mode=parse_mode_for_final_edit_attempt,
+                                                                    reply_markup=feedback_keyboard)
                             logger.info(
                                 f"Chat {chat_id} (Doc Final): Final edit with {'ESCAPED MDV2' if parse_mode_for_final_edit_attempt else 'TRANSFORMED PLAIN'} successful.")
                         except BadRequest as e_f_edit:
@@ -970,7 +1196,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
-    Displays bot usage statistics. Only accessible by the admin.
+    Displays bot usage statistics, including user feedback. Only accessible by the admin.
     """
     user_id = update.effective_user.id
     if user_id != ADMIN_ID:
@@ -981,14 +1207,24 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     stats = context.bot_data.get('stats', {})
 
-    # Get the individual stats, with a default of 0 if they don't exist yet
+    # --- Get existing interaction stats ---
     messages = stats.get("messages_received", 0)
     images = stats.get("images_received", 0)
     documents = stats.get("documents_received", 0)
     searches = stats.get("web_searches", 0)
     new_users = stats.get("new_users", 0)
 
-    # Format the stats into a nice message
+    # --- NEW: Get feedback stats ---
+    positive_feedback = stats.get("feedback_positive", 0)
+    negative_feedback = stats.get("feedback_negative", 0)
+
+    # --- NEW: Calculate satisfaction rate safely ---
+    total_feedback = positive_feedback + negative_feedback
+    satisfaction_rate = 0.0
+    if total_feedback > 0:
+        satisfaction_rate = (positive_feedback / total_feedback) * 100
+
+    # --- MODIFIED: Format the stats message with the new section ---
     stats_text = (
         f"*📊 Bot Usage Statistics*\n\n"
         f"⚪️ *Total Interactions:*\n"
@@ -998,7 +1234,12 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         f"⚙️ *API Usage:*\n"
         f"  - Web Searches Performed: `{searches}`\n\n"
         f"👤 *User Metrics:*\n"
-        f"  - New Users Started: `{new_users}`"
+        f"  - New Users Started: `{new_users}`\n\n"  # Added a newline for spacing
+        # --- NEW SECTION FOR FEEDBACK ---
+        f"⭐ *User Feedback (Satisfaction):*\n"
+        f"  - Positive (👍): `{positive_feedback}`\n"
+        f"  - Negative (👎): `{negative_feedback}`\n"
+        f"  - Satisfaction Rate: `{satisfaction_rate:.1f}%`"
     )
 
     await update.message.reply_text(
@@ -1325,59 +1566,62 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     Handles all incoming text messages. Acts as a router to determine if the message
     is a standard text query or a contextual reply to a previously sent media file.
     """
-    # Preliminary check to ensure there's a message to process.
-    if not update.message:
+    # --- Start of function is unchanged ---
+    if not update.message or not update.message.text:
         return
 
-    increment_stat(context, "messages_received")
+    # --- ROUTING LOGIC ---
 
-    if 'mdv2_failed_for_msg_id' not in context.chat_data:
-        context.chat_data['mdv2_failed_for_msg_id'] = {}
+    # ## ROUTE 1: Check for a URL in the message text ##
+    # A simple regex to find URLs
+    url_pattern = r'https?://[^\s/$.?#].[^\s]*'
+    found_url = re.search(url_pattern, update.message.text)
 
-    # --- NEW: CONTEXTUAL REPLY ROUTING LOGIC ---
-    if update.message.reply_to_message:
-        replied_message = update.message.reply_to_message
+    if found_url:
+        logger.info(f"URL detected in message: {found_url.group(0)}")
+        await _process_url(update, context, found_url.group(0))
+        return  # Stop further processing
 
-        # Route 1: Is it a reply to a photo with a new text prompt?
-        if replied_message.photo and update.message.text:
+    # ## ROUTE 2: Check for a reply to a bot message (our previous summary) ##
+    if update.message.reply_to_message and update.message.reply_to_message.from_user.is_bot:
+        # Check if it's a follow-up to the last summarized URL
+        if 'last_url_content' in context.chat_data:
+            await _process_url_follow_up(update, context)
+            return  # Stop further processing
+
+        # Check for reply to photo (existing logic)
+        if update.message.reply_to_message.photo:
             logger.info("User is replying to a photo. Routing to image processor.")
-
-            # Get the file_id of the REPLIED-TO photo and the new prompt text.
-            file_id = replied_message.photo[-1].file_id
+            file_id = update.message.reply_to_message.photo[-1].file_id
             new_prompt = update.message.text
-
-            # Call the central image processor and then stop this handler's execution.
             await _process_image(update, context, file_id, new_prompt)
             return
 
-        # (Future Enhancement) Route 2: Is it a reply to a document?
-        # if replied_message.document and update.message.text:
-        #     # ... logic to re-process document ...
-        #     return
+    # --- IF NO SPECIAL ROUTE WAS TAKEN, PROCEED WITH STANDARD TEXT HANDLING ---
 
-    # --- EXISTING: STANDARD TEXT AND TOOL CALL HANDLING ---
-    # If the message is not a contextual reply, or not a reply at all, proceed.
-
-    if not update.message.text:
-        # This handles cases like sending a sticker directly.
-        return
-
-    user, message_text, chat_id = update.effective_user, update.message.text, update.effective_chat.id
-    logger.info(f"Chat {chat_id}: User {user.id} handling standard text message: '{message_text[:100]}...'")
-
-    user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
-    lang_name_prompt = SUPPORTED_LANGUAGES.get(user_lang_code, SUPPORTED_LANGUAGES[DEFAULT_LANGUAGE_CODE]).split(" (")[
-        0]
-    system_prompt = DEFAULT_SYSTEM_PROMPT_BASE + f"\n\nImportant: Please provide your entire response in {lang_name_prompt}."
-    conversation_history = context.chat_data.get('conversation_history', [])
-
-    # Initialize state trackers
+    increment_stat(context, "messages_received")
     if 'mdv2_failed_for_msg_id' not in context.chat_data:
         context.chat_data['mdv2_failed_for_msg_id'] = {}
-
+    if update.message.reply_to_message:
+        replied_message = update.message.reply_to_message
+        if replied_message.photo and update.message.text:
+            logger.info("User is replying to a photo. Routing to image processor.")
+            file_id = replied_message.photo[-1].file_id
+            new_prompt = update.message.text
+            await _process_image(update, context, file_id, new_prompt)
+            return
+    if not update.message.text:
+        return
+    user, message_text, chat_id = update.effective_user, update.message.text, update.effective_chat.id
+    logger.info(f"Chat {chat_id}: User {user.id} handling standard text message: '{message_text[:100]}...'")
+    user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
+    lang_name_prompt = SUPPORTED_LANGUAGES.get(user_lang_code, SUPPORTED_LANGUAGES[DEFAULT_LANGUAGE_CODE]).split(" (")[0]
+    system_prompt = DEFAULT_SYSTEM_PROMPT_BASE + f"\n\nImportant: Please provide your entire response in {lang_name_prompt}."
+    conversation_history = context.chat_data.get('conversation_history', [])
+    if 'mdv2_failed_for_msg_id' not in context.chat_data:
+        context.chat_data['mdv2_failed_for_msg_id'] = {}
     placeholder_message: Message | None = None
     current_placeholder_parse_mode: constants.ParseMode | None = constants.ParseMode.MARKDOWN_V2
-
     try:
         thinking_raw = get_template("thinking", user_lang_code, default_val="🧠 Thinking...")
         placeholder_message = await update.message.reply_text(escape_markdown_v2(thinking_raw),
@@ -1389,26 +1633,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(f"Chat {chat_id}: Failed to send initial placeholder for text message: {e}", exc_info=True)
         return
-
     if not placeholder_message:
         logger.error(f"Chat {chat_id}: placeholder_message is None after initial sending. Cannot proceed.")
         return
-
     initial_placeholder_text = placeholder_message.text
     current_message_text_on_telegram = placeholder_message.text
-
     accumulated_raw_text_for_current_segment = ""
     full_raw_response_for_history = ""
     last_edit_time = asyncio.get_event_loop().time()
-
     try:
         logger.debug(f"Chat {chat_id}: Calling ask_gemini_stream with tool support.")
-
+        # --- Streaming loop is unchanged ---
         async for chunk in ask_gemini_stream(message_text, conversation_history, system_prompt):
             if isinstance(chunk, dict) and chunk.get("tool_call_start"):
                 tool_name = chunk.get("tool_name", "unknown_tool")
                 logger.info(f"Chat {chat_id}: Received tool call signal for '{tool_name}'.")
-
                 if tool_name == "perform_web_search":
                     increment_stat(context, "web_searches")
                     searching_raw = get_template("searching_web", user_lang_code, default_val="Searching the web... 🌐")
@@ -1419,67 +1658,46 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     except BadRequest:
                         await placeholder_message.edit_text(searching_raw, parse_mode=None)
                         current_placeholder_parse_mode = None
-
                     initial_placeholder_text = placeholder_message.text
                     current_message_text_on_telegram = placeholder_message.text
                     accumulated_raw_text_for_current_segment = ""
                 continue
-
             if not isinstance(chunk, str): continue
-
             chunk_raw = chunk
             full_raw_response_for_history += chunk_raw
             accumulated_raw_text_for_current_segment += chunk_raw
             current_time = asyncio.get_event_loop().time()
-
-            current_placeholder_mdv2_has_failed_parsing = context.chat_data['mdv2_failed_for_msg_id'].get(
-                placeholder_message.message_id, False)
-
-            should_edit_now = (
-                    current_message_text_on_telegram == initial_placeholder_text or
-                    current_time - last_edit_time >= STREAM_UPDATE_INTERVAL or
-                    len(chunk_raw) > 70
-            )
-
+            current_placeholder_mdv2_has_failed_parsing = context.chat_data['mdv2_failed_for_msg_id'].get(placeholder_message.message_id, False)
+            should_edit_now = (current_message_text_on_telegram == initial_placeholder_text or current_time - last_edit_time >= STREAM_UPDATE_INTERVAL or len(chunk_raw) > 70)
             if accumulated_raw_text_for_current_segment.strip() and should_edit_now:
                 raw_text_to_process = accumulated_raw_text_for_current_segment
                 text_to_send_this_edit, parse_mode_for_this_edit_attempt = "", None
-
                 if current_placeholder_mdv2_has_failed_parsing:
                     text_to_send_this_edit = transform_markdown_fallback(raw_text_to_process)
                     parse_mode_for_this_edit_attempt = None
                 else:
                     text_to_send_this_edit = escape_markdown_v2(raw_text_to_process)
                     parse_mode_for_this_edit_attempt = constants.ParseMode.MARKDOWN_V2
-
                 if len(text_to_send_this_edit) > TELEGRAM_MAX_MESSAGE_LENGTH:
                     logger.info(f"Chat {chat_id} (Text Stream): Text for chosen format too long. Offloading.")
-                    continue_message_raw = get_template("response_continued_below", user_lang_code,
-                                                        default_val="...(see new messages below)...")
+                    continue_message_raw = get_template("response_continued_below", user_lang_code, default_val="...(see new messages below)...")
                     try:
                         if placeholder_message.text != escape_markdown_v2(continue_message_raw):
-                            await placeholder_message.edit_text(escape_markdown_v2(continue_message_raw),
-                                                                parse_mode=constants.ParseMode.MARKDOWN_V2)
+                            await placeholder_message.edit_text(escape_markdown_v2(continue_message_raw), parse_mode=constants.ParseMode.MARKDOWN_V2)
                     except BadRequest:
                         if placeholder_message.text != continue_message_raw:
                             await placeholder_message.edit_text(continue_message_raw, parse_mode=None)
-
                     await send_long_message_fallback(update, context, raw_text_to_process)
                     accumulated_raw_text_for_current_segment = ""
-
                     if placeholder_message.message_id in context.chat_data['mdv2_failed_for_msg_id']:
                         del context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id]
-
-                    continuing_raw = get_template("continuing_response", user_lang_code,
-                                                  default_val="...continuing response...")
+                    continuing_raw = get_template("continuing_response", user_lang_code, default_val="...continuing response...")
                     try:
-                        placeholder_message = await update.message.reply_text(escape_markdown_v2(continuing_raw),
-                                                                              parse_mode=constants.ParseMode.MARKDOWN_V2)
+                        placeholder_message = await update.message.reply_text(escape_markdown_v2(continuing_raw), parse_mode=constants.ParseMode.MARKDOWN_V2)
                         current_placeholder_parse_mode = constants.ParseMode.MARKDOWN_V2
                     except BadRequest:
                         placeholder_message = await update.message.reply_text(continuing_raw, parse_mode=None)
                         current_placeholder_parse_mode = None
-
                     initial_placeholder_text = placeholder_message.text
                     current_message_text_on_telegram = placeholder_message.text
                 else:
@@ -1493,121 +1711,103 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             current_message_text_on_telegram = text_to_send_this_edit
                             if parse_mode_for_this_edit_attempt == constants.ParseMode.MARKDOWN_V2:
                                 context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id] = False
-                        logger.debug(
-                            f"Chat {chat_id} (Text Stream): Edit with {'MDV2' if parse_mode_for_this_edit_attempt else 'PLAIN'} successful.")
+                        logger.debug(f"Chat {chat_id} (Text Stream): Edit with {'MDV2' if parse_mode_for_this_edit_attempt else 'PLAIN'} successful.")
                     except BadRequest as e_edit_stream:
                         if "message is not modified" in str(e_edit_stream).lower():
                             pass
-                        elif parse_mode_for_this_edit_attempt == constants.ParseMode.MARKDOWN_V2 and \
-                                any(err_str in str(e_edit_stream).lower() for err_str in
-                                    ["can't parse entities", "unescaped", "can't find end of", "nested entities"]):
-                            logger.warning(
-                                f"Chat {chat_id} (Text Stream): MDV2 FAILED PARSING: {e_edit_stream}. Sticking to plain for msg_id {placeholder_message.message_id}.")
+                        elif parse_mode_for_this_edit_attempt == constants.ParseMode.MARKDOWN_V2 and any(err_str in str(e_edit_stream).lower() for err_str in ["can't parse entities", "unescaped", "can't find end of", "nested entities"]):
+                            logger.warning(f"Chat {chat_id} (Text Stream): MDV2 FAILED PARSING: {e_edit_stream}. Sticking to plain for msg_id {placeholder_message.message_id}.")
                             context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id] = True
-
                             transformed_retry = transform_markdown_fallback(raw_text_to_process)
                             if len(transformed_retry) > TELEGRAM_MAX_MESSAGE_LENGTH:
                                 transformed_retry = transformed_retry[:TELEGRAM_MAX_MESSAGE_LENGTH]
                             try:
                                 if transformed_retry != current_message_text_on_telegram:
-                                    await context.bot.edit_message_text(transformed_retry, chat_id,
-                                                                        placeholder_message.message_id, parse_mode=None)
+                                    await context.bot.edit_message_text(transformed_retry, chat_id, placeholder_message.message_id, parse_mode=None)
                                     current_placeholder_parse_mode = None
                                     current_message_text_on_telegram = transformed_retry
-                                logger.info(
-                                    f"Chat {chat_id} (Text Stream): Retry edit with TRANSFORMED PLAIN successful.")
+                                logger.info(f"Chat {chat_id} (Text Stream): Retry edit with TRANSFORMED PLAIN successful.")
                             except BadRequest as e_plain_retry_stream:
                                 if "message is not modified" not in str(e_plain_retry_stream).lower():
-                                    logger.error(
-                                        f"Chat {chat_id} (Text Stream): TRANSFORMED PLAIN retry FAILED: {e_plain_retry_stream}")
+                                    logger.error(f"Chat {chat_id} (Text Stream): TRANSFORMED PLAIN retry FAILED: {e_plain_retry_stream}")
                         else:
-                            logger.error(
-                                f"Chat {chat_id} (Text Stream): Unhandled BadRequest during stream edit: {e_edit_stream}")
-
+                            logger.error(f"Chat {chat_id} (Text Stream): Unhandled BadRequest during stream edit: {e_edit_stream}")
                 last_edit_time = current_time
                 await asyncio.sleep(0.05)
 
         # --- Final Edit & History Saving ---
-        logger.info(
-            f"Chat {chat_id} (Text): Stream finished. Full raw response length: {len(full_raw_response_for_history)}.")
+        logger.info(f"Chat {chat_id} (Text): Stream finished. Full raw response length: {len(full_raw_response_for_history)}.")
         final_segment_raw = accumulated_raw_text_for_current_segment.strip()
 
         if final_segment_raw:
-            final_placeholder_mdv2_has_failed_parsing = context.chat_data['mdv2_failed_for_msg_id'].get(
-                placeholder_message.message_id, False)
+            final_placeholder_mdv2_has_failed_parsing = context.chat_data['mdv2_failed_for_msg_id'].get(placeholder_message.message_id, False)
             text_for_final_edit, parse_mode_for_final_edit = "", None
-
             if final_placeholder_mdv2_has_failed_parsing:
                 text_for_final_edit = transform_markdown_fallback(final_segment_raw)
             else:
                 text_for_final_edit = escape_markdown_v2(final_segment_raw)
                 parse_mode_for_final_edit = constants.ParseMode.MARKDOWN_V2
-
             if len(text_for_final_edit) > TELEGRAM_MAX_MESSAGE_LENGTH:
                 await send_long_message_fallback(update, context, final_segment_raw)
             else:
+                feedback_keyboard = build_feedback_keyboard(placeholder_message.message_id)
                 try:
-                    if text_for_final_edit != current_message_text_on_telegram:
-                        await placeholder_message.edit_text(text_for_final_edit, parse_mode=parse_mode_for_final_edit)
-                    logger.info(
-                        f"Chat {chat_id} (Text Final): Final edit with {'MDV2' if parse_mode_for_final_edit else 'PLAIN'} successful.")
+                    # #######################################################################
+                    # ## THE FIX: REMOVED THE `if text_for_final_edit != ...` CONDITION ##
+                    # #######################################################################
+                    # This FORCES the final edit, which adds the buttons.
+                    # The "message is not modified" error is handled gracefully below.
+                    await placeholder_message.edit_text(text_for_final_edit,
+                                                        parse_mode=parse_mode_for_final_edit,
+                                                        reply_markup=feedback_keyboard)
+                    logger.info(f"Chat {chat_id} (Text Final): Final edit with {'MDV2' if parse_mode_for_final_edit else 'PLAIN'} successful.")
                 except BadRequest as e_f_edit:
                     if "message is not modified" in str(e_f_edit).lower():
+                        # This is now expected and harmless. It means the text was already final,
+                        # but the buttons were added successfully (or were already there).
                         pass
                     elif parse_mode_for_final_edit == constants.ParseMode.MARKDOWN_V2:
-                        logger.warning(
-                            f"Chat {chat_id} (Text Final): Final MDV2 edit FAILED PARSING: {e_f_edit}. Trying plain fallback.")
+                        logger.warning(f"Chat {chat_id} (Text Final): Final MDV2 edit FAILED PARSING: {e_f_edit}. Trying plain fallback.")
                         transformed_final_fallback = transform_markdown_fallback(final_segment_raw)
                         if len(transformed_final_fallback) > TELEGRAM_MAX_MESSAGE_LENGTH:
                             transformed_final_fallback = transformed_final_fallback[:TELEGRAM_MAX_MESSAGE_LENGTH]
                         try:
-                            if transformed_final_fallback != current_message_text_on_telegram:
-                                await placeholder_message.edit_text(transformed_final_fallback, parse_mode=None)
-                            logger.info(
-                                f"Chat {chat_id} (Text Final): Final edit with TRANSFORMED PLAIN fallback successful.")
+                            await placeholder_message.edit_text(transformed_final_fallback, parse_mode=None, reply_markup=feedback_keyboard)
+                            logger.info(f"Chat {chat_id} (Text Final): Final edit with TRANSFORMED PLAIN fallback successful.")
                         except BadRequest as e_f_plain_fb:
                             if "message is not modified" not in str(e_f_plain_fb).lower():
-                                logger.error(
-                                    f"Chat {chat_id} (Text Final): Final plain fallback FAILED: {e_f_plain_fb}")
+                                logger.error(f"Chat {chat_id} (Text Final): Final plain fallback FAILED: {e_f_plain_fb}")
                     else:
                         logger.error(f"Chat {chat_id} (Text Final): Final edit failed: {e_f_edit}")
 
         elif not full_raw_response_for_history.strip():
-            no_response_raw = get_template("gemini_no_response_text", user_lang_code,
-                                           default_val="🤷 No response generated.")
+            no_response_raw = get_template("gemini_no_response_text", user_lang_code, default_val="🤷 No response generated.")
             try:
                 if placeholder_message.text != escape_markdown_v2(no_response_raw):
-                    await placeholder_message.edit_text(escape_markdown_v2(no_response_raw),
-                                                        parse_mode=constants.ParseMode.MARKDOWN_V2)
+                    await placeholder_message.edit_text(escape_markdown_v2(no_response_raw), parse_mode=constants.ParseMode.MARKDOWN_V2)
             except BadRequest:
                 if placeholder_message.text != no_response_raw:
                     await placeholder_message.edit_text(no_response_raw, parse_mode=None)
 
-        # --- Save to Conversation History ---
-        if full_raw_response_for_history.strip() and not any(
-                kw in full_raw_response_for_history.lower() for kw in
-                ["i can't", "sorry", "unable to", "guidelines", "blocked", "cannot provide"]):
+        # --- History saving is unchanged ---
+        if full_raw_response_for_history.strip() and not any(kw in full_raw_response_for_history.lower() for kw in ["i can't", "sorry", "unable to", "guidelines", "blocked", "cannot provide"]):
             conversation_history.append({'role': 'user', 'parts': [{'text': message_text}]})
             conversation_history.append({'role': 'model', 'parts': [{'text': full_raw_response_for_history}]})
             context.chat_data['conversation_history'] = conversation_history[-(MAX_CONVERSATION_TURNS * 2):]
             logger.debug(f"Chat {chat_id}: History updated. Len: {len(context.chat_data['conversation_history'])}.")
         else:
-            logger.warning(
-                f"Chat {chat_id}: AI response empty/refusal. Not saved. Preview: '{full_raw_response_for_history[:100].replace(chr(10), ' ')}...'")
+            logger.warning(f"Chat {chat_id}: AI response empty/refusal. Not saved. Preview: '{full_raw_response_for_history[:100].replace(chr(10), ' ')}...'")
 
     except Exception as e_outer:
         logger.error(f"Chat {chat_id}: Unhandled error in handle_message: {e_outer}", exc_info=True)
-        err_proc_raw = get_template("unexpected_error_processing", user_lang_code,
-                                    default_val="⚠️ An unexpected error occurred.")
+        err_proc_raw = get_template("unexpected_error_processing", user_lang_code, default_val="⚠️ An unexpected error occurred.")
         try:
             if placeholder_message and placeholder_message.text != escape_markdown_v2(err_proc_raw):
-                await placeholder_message.edit_text(escape_markdown_v2(err_proc_raw),
-                                                    parse_mode=constants.ParseMode.MARKDOWN_V2)
+                await placeholder_message.edit_text(escape_markdown_v2(err_proc_raw), parse_mode=constants.ParseMode.MARKDOWN_V2)
         except Exception:
             pass
     finally:
-        if placeholder_message and placeholder_message.message_id in context.chat_data.get('mdv2_failed_for_msg_id',
-                                                                                           {}):
+        if placeholder_message and placeholder_message.message_id in context.chat_data.get('mdv2_failed_for_msg_id', {}):
             del context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id]
         logger.info(f"--- handle_message finished for chat {chat_id} ---")
 
@@ -1621,33 +1821,43 @@ async def send_long_message_fallback(update: Update,
                                      text_to_send_raw: str,
                                      max_length: int = TELEGRAM_MAX_MESSAGE_LENGTH) -> Message | None:
     """
-    Splits a long raw text message and sends it in parts.
-    PRIORITIZES sending transformed plain text for readability of lists.
-    Falls back to Escaped MarkdownV2 or raw plain if transformed plain fails.
-    Returns the last message object sent by this function, or None.
+    Splits a long raw text message and sends it in parts, adding feedback buttons to the final message.
+
+    This function first splits the raw text into chunks that respect the max length, trying to
+    break at natural points like newlines. It then attempts to send each chunk using a prioritized
+    list of formats for best readability:
+    1. Transformed Plain Text (for good list/structure rendering).
+    2. Escaped MarkdownV2 (if plain text fails).
+    3. Truncated Raw Text (as a last resort).
+
+    After the final chunk is successfully sent, it edits that message to add 👍/👎 feedback buttons.
+
+    Args:
+        update: The `Update` object from the handler.
+        context: The `ContextTypes.DEFAULT_TYPE` object from the handler.
+        text_to_send_raw: The full, raw (un-escaped) string to be sent.
+        max_length: The maximum length for a single Telegram message.
+
+    Returns:
+        The `Message` object of the last message sent by this function, or `None` if no messages were sent.
     """
     logger.debug(f"send_long_message_fallback called. Raw text length: {len(text_to_send_raw)}")
 
-    parts_raw = []
-    current_text_raw = str(text_to_send_raw)
-
-    if not current_text_raw.strip():
-        logger.info("send_long_message_fallback: called with empty/whitespace text. Nothing to send.")
+    if not str(text_to_send_raw).strip():
+        logger.info("send_long_message_fallback called with empty/whitespace text. Nothing to send.")
         return None
 
-    # Splitting logic (operates on raw text to find good break points)
-    # This tries to create raw segments that, after transformation, might fit.
-    # A simple approach is to split raw text based on max_length, as transformation
-    # length is unpredictable without doing it first.
+    # --- Smart Splitting Logic ---
+    parts_raw = []
+    current_text_raw = str(text_to_send_raw)
     while len(current_text_raw) > 0:
-        potential_split_len = max_length  # Split raw based on this
-        if len(current_text_raw) > potential_split_len:
-            part_segment_raw = current_text_raw[:potential_split_len]
-            # Try to find a natural break point (newline or space) near the end
-            last_newline = part_segment_raw.rfind('\n', max(0, potential_split_len - 500))  # Look back
-            last_space = part_segment_raw.rfind(' ', max(0, potential_split_len - 500))
+        if len(current_text_raw) > max_length:
+            part_segment_raw = current_text_raw[:max_length]
+            # Search backwards from the end for a natural break point.
+            last_newline = part_segment_raw.rfind('\n', max(0, max_length - 500))
+            last_space = part_segment_raw.rfind(' ', max(0, max_length - 500))
 
-            split_at = potential_split_len  # Default split point
+            split_at = max_length
             if last_newline != -1:
                 split_at = last_newline + 1
             elif last_space != -1:
@@ -1655,98 +1865,99 @@ async def send_long_message_fallback(update: Update,
 
             parts_raw.append(current_text_raw[:split_at])
             current_text_raw = current_text_raw[split_at:].lstrip()
-        else:  # Remaining part is small enough
+        else:
             parts_raw.append(current_text_raw)
             break
 
     if not parts_raw:
-        logger.warning("send_long_message_fallback: No parts were generated. Original text: '%s...'",
-                       text_to_send_raw[:100].replace('\n', ' '))
+        logger.warning("send_long_message_fallback: No parts were generated from text. Skipping.")
         return None
 
+    # --- Sending Loop ---
     last_sent_message_object: Message | None = None
-    user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
+    user_lang_code = context.user_data.get('selected_language', "en")
+    total_parts = len(parts_raw)
 
     for i, segment_raw_orig in enumerate(parts_raw):
         segment_raw = segment_raw_orig.strip()
         if not segment_raw:
-            logger.debug(f"Fallback: Skipping empty segment {i + 1}/{len(parts_raw)}.")
+            logger.debug(f"Fallback: Skipping empty segment {i + 1}/{total_parts}.")
             continue
 
-        log_segment_preview = segment_raw[:70].replace('\n', ' ') + ('...' if len(segment_raw) > 70 else '')
-        logger.debug(
-            f"Fallback: Processing raw segment {i + 1}/{len(parts_raw)}, raw_len {len(segment_raw)}. Preview: '{log_segment_preview}'")
+        log_preview = segment_raw[:70].replace('\n', ' ') + '...'
+        logger.debug(f"Fallback: Processing segment {i + 1}/{total_parts}. Preview: '{log_preview}'")
 
         sent_successfully = False
         current_segment_message: Message | None = None
 
-        # --- MODIFIED PRIORITY: Attempt Transformed Plain Text FIRST ---
-        transformed_segment = transform_markdown_fallback(segment_raw)
-
+        # --- Priority 1: Attempt Transformed Plain Text ---
         try:
-            text_to_send_plain = transformed_segment
+            transformed_segment = transform_markdown_fallback(segment_raw)
             if len(transformed_segment) > max_length:
-                logger.warning(
-                    f"Fallback: Transformed segment {i + 1} too long ({len(transformed_segment)} chars). Sending original raw (truncated).")
-                text_to_send_plain = segment_raw[:max_length]  # Fallback to truncated original raw text
+                logger.warning(f"Fallback: Transformed segment {i + 1} too long. Sending truncated raw.")
+                text_to_send = segment_raw[:max_length]
+            else:
+                text_to_send = transformed_segment
 
-            current_segment_message = await update.message.reply_text(text_to_send_plain, parse_mode=None)
-            logger.info(f"Fallback: Sent segment {i + 1}/{len(parts_raw)} as TRANSFORMED PLAIN (or truncated raw).")
+            current_segment_message = await update.message.reply_text(text_to_send, parse_mode=None)
+            logger.info(f"Fallback: Sent segment {i + 1}/{total_parts} as TRANSFORMED PLAIN.")
             sent_successfully = True
-        except Exception as e_plain_fail:
-            logger.error(
-                f"Fallback: TRANSFORMED PLAIN send FAILED for segment {i + 1}. Error: {e_plain_fail}. Trying Escaped MDV2 as next fallback.")
+        except Exception as e_plain:
+            logger.error(f"Fallback: TRANSFORMED PLAIN send FAILED: {e_plain}. Trying Escaped MDV2.")
 
-            # Fallback Attempt 2: Escaped MarkdownV2
+            # --- Priority 2: Fallback to Escaped MarkdownV2 ---
             try:
-                segment_escaped = escape_markdown_v2(segment_raw)
-                text_to_send_md = segment_escaped
-                parse_mode_for_md_fallback = constants.ParseMode.MARKDOWN_V2
+                escaped_segment = escape_markdown_v2(segment_raw)
+                if len(escaped_segment) > max_length:
+                    logger.warning(f"Fallback: Escaped MDV2 for segment {i + 1} also too long. Sending truncated raw.")
+                    current_segment_message = await update.message.reply_text(segment_raw[:max_length], parse_mode=None)
+                else:
+                    current_segment_message = await update.message.reply_text(escaped_segment,
+                                                                              parse_mode=constants.ParseMode.MARKDOWN_V2)
 
-                if len(segment_escaped) > max_length:
-                    logger.warning(
-                        f"Fallback: Escaped MDV2 for segment {i + 1} too long ({len(segment_escaped)}). Trying original raw (truncated) as plain.")
-                    text_to_send_md = segment_raw[:max_length]  # Ultra fallback to truncated raw plain
-                    parse_mode_for_md_fallback = None  # Send as plain
-
-                current_segment_message = await update.message.reply_text(text_to_send_md,
-                                                                          parse_mode=parse_mode_for_md_fallback)
-                logger.info(
-                    f"Fallback: Sent segment {i + 1}/{len(parts_raw)} as ESCAPED MDV2 (or raw plain if MDV2 too long) after plain transformed failed.")
+                logger.info(f"Fallback: Sent segment {i + 1}/{total_parts} as ESCAPED MDV2 (or truncated raw).")
                 sent_successfully = True
-            except Exception as e_md_ultra_fallback:
-                logger.error(
-                    f"Fallback: ESCAPED MDV2/RAW PLAIN send ALSO FAILED for segment {i + 1}. Error: {e_md_ultra_fallback}.")
+            except Exception as e_md:
+                logger.error(f"Fallback: ESCAPED MDV2 send ALSO FAILED: {e_md}.")
 
-        # Update last sent message object
+        # --- Post-Send Processing ---
         if current_segment_message:
             last_sent_message_object = current_segment_message
 
-        # Handle failure to send by any method
         if not sent_successfully:
-            logger.critical(
-                f"Fallback: FAILED TO SEND segment {i + 1}/{len(parts_raw)} by any method. Preview: '{log_segment_preview}'")
+            logger.critical(f"Fallback: FAILED TO SEND segment {i + 1}/{total_parts} by any method.")
             try:
-                # Use a default message if template is missing to avoid further errors
-                error_template_key = "error_displaying_response_part"
-                default_error_text = "⚠️ Error: A part of the response could not be displayed."
-                err_msg_raw = get_template(error_template_key, user_lang_code, default_val=default_error_text)
-
-                err_msg_esc = escape_markdown_v2(err_msg_raw)
-
-                error_confirmation_msg = await context.bot.send_message(
-                    chat_id=update.effective_chat.id, text=err_msg_esc, parse_mode=constants.ParseMode.MARKDOWN_V2
+                err_msg_raw = get_template("error_displaying_response_part", user_lang_code,
+                                           default_val="⚠️ Error: A part of the response could not be displayed.")
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id, text=escape_markdown_v2(err_msg_raw),
+                    parse_mode=constants.ParseMode.MARKDOWN_V2
                 )
-                if error_confirmation_msg: last_sent_message_object = error_confirmation_msg
-            except Exception as e_generic_error_send:
-                logger.error(f"Failed to send 'part lost' error message to user: {e_generic_error_send}")
+            except Exception as e_err_send:
+                logger.error(f"Failed to send 'part lost' error message to user: {e_err_send}")
+            continue
 
-        # Delay if not the last part and sent successfully
-        if i < len(parts_raw) - 1 and sent_successfully:
+        # --- Add Feedback Buttons to the Final Message ---
+        is_last_part = (i == total_parts - 1)
+        if is_last_part and current_segment_message:
+            feedback_keyboard = build_feedback_keyboard(current_segment_message.message_id)
+            try:
+                await context.bot.edit_message_reply_markup(
+                    chat_id=update.effective_chat.id,
+                    message_id=current_segment_message.message_id,
+                    reply_markup=feedback_keyboard
+                )
+                logger.info(
+                    f"Fallback: Successfully added feedback keyboard to final message {current_segment_message.message_id}.")
+            except BadRequest as e_feedback:
+                logger.warning(
+                    f"Fallback: Could not add feedback keyboard to message {current_segment_message.message_id}: {e_feedback}")
+
+        # Delay between messages to avoid flooding, but not after the last one.
+        if not is_last_part:
             await asyncio.sleep(0.35)
 
     return last_sent_message_object
-
 
 async def set_bot_commands(application: Application):
     """
@@ -1833,6 +2044,7 @@ def add_all_handlers(application: "Application"):
     # --- Callback Query Handlers ---
     application.add_handler(CallbackQueryHandler(language_set_callback_handler, pattern=r"^set_lang_"))
     application.add_handler(CallbackQueryHandler(language_page_callback_handler, pattern=r"^lang_page_"))
+    application.add_handler(CallbackQueryHandler(feedback_callback_handler, pattern=r"^feedback:"))
     application.add_handler(CallbackQueryHandler(button_callback_handler))
 
     # --- Message Handlers ---
