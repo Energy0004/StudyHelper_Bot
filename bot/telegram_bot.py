@@ -10,6 +10,7 @@ from functools import wraps
 
 import requests
 from bs4 import BeautifulSoup
+from openai import OpenAI, RateLimitError, APIConnectionError
 
 from localization import COMMANDS
 from telegram import Update, constants, Message
@@ -36,6 +37,15 @@ from localization import get_template, DEFAULT_LOC_LANG
 from .gemini_utils import ask_gemini_stream, ask_gemini_vision_stream
 
 logger = logging.getLogger(__name__)  # This will be 'bot.telegram_bot'
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+openai_client = None
+if not OPENAI_API_KEY:
+    logger.warning("OPENAI_API_KEY not found in .env. Voice message transcription will be disabled.")
+else:
+    # Initialize the OpenAI client
+    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+    logger.info("OpenAI client initialized successfully for voice transcriptions.")
 
 try:
     import pytesseract
@@ -353,6 +363,248 @@ async def download_telegram_file(bot_instance: telegram.Bot, file_id: str, local
         logger.error(f"Failed to download file {file_id}: {e}")
         return False
 
+
+async def _core_ai_handler(
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+        prompt_text: str,
+        conversation_history: list
+):
+    """
+    The core logic for interacting with Gemini, streaming the response, and handling fallbacks.
+
+    This function is the central workhorse for all text-based AI interactions. It is called by
+    various routing handlers (like the main message handler or the URL follow-up handler)
+    and is responsible for:
+    1. Sending an initial "Thinking..." placeholder.
+    2. Calling the `ask_gemini_stream` function with the provided prompt.
+    3. Streaming the response back to the user by editing the placeholder message.
+    4. Handling MarkdownV2 parsing errors and falling back to plain text.
+    5. Handling messages that are too long by delegating to `send_long_message_fallback`.
+    6. Adding the 👍/👎 feedback keyboard to the final successful message.
+    7. Saving the interaction to the conversation history.
+
+    Args:
+        update: The original `Update` object from the user's action.
+        context: The `ContextTypes.DEFAULT_TYPE` object.
+        prompt_text: The actual prompt to be sent to the Gemini API. This might be the user's
+                     raw text or a specially constructed prompt (e.g., for a URL follow-up).
+        conversation_history: The current list of conversation turns.
+    """
+    chat_id = update.effective_chat.id
+    user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
+
+    # Get language for the prompt and create the full system prompt
+    lang_name_prompt = SUPPORTED_LANGUAGES.get(user_lang_code, "English").split(" (")[0]
+    system_prompt = f"{DEFAULT_SYSTEM_PROMPT_BASE}\n\nImportant: Please provide your entire response in {lang_name_prompt}."
+
+    if 'mdv2_failed_for_msg_id' not in context.chat_data:
+        context.chat_data['mdv2_failed_for_msg_id'] = {}
+
+    placeholder_message: Message | None = None
+    try:
+        thinking_raw = get_template("thinking", user_lang_code, default_val="🧠 Thinking...")
+        placeholder_message = await update.message.reply_text(escape_markdown_v2(thinking_raw),
+                                                              parse_mode=constants.ParseMode.MARKDOWN_V2)
+    except BadRequest:
+        thinking_raw = get_template("thinking", user_lang_code, default_val="🧠 Thinking...")
+        placeholder_message = await update.message.reply_text(thinking_raw, parse_mode=None)
+    except Exception as e:
+        logger.error(f"Chat {chat_id}: Failed to send initial placeholder in _core_ai_handler: {e}", exc_info=True)
+        return
+
+    if not placeholder_message:
+        logger.error(f"Chat {chat_id}: placeholder_message is None in _core_ai_handler. Cannot proceed.")
+        return
+
+    initial_placeholder_text = placeholder_message.text
+    current_message_text_on_telegram = placeholder_message.text
+    accumulated_raw_text_for_current_segment = ""
+    full_raw_response_for_history = ""
+    last_edit_time = asyncio.get_event_loop().time()
+
+    try:
+        logger.debug(
+            f"Chat {chat_id}: Calling ask_gemini_stream with tool support for prompt: '{prompt_text[:100]}...'")
+
+        # Use the `prompt_text` argument for the AI call
+        async for chunk in ask_gemini_stream(prompt_text, conversation_history, system_prompt):
+            if isinstance(chunk, dict) and chunk.get("tool_call_start"):
+                tool_name = chunk.get("tool_name", "unknown_tool")
+                logger.info(f"Chat {chat_id}: Received tool call signal for '{tool_name}'.")
+                if tool_name == "perform_web_search":
+                    increment_stat(context, "web_searches")
+                    searching_raw = get_template("searching_web", user_lang_code, default_val="Searching the web... 🌐")
+                    try:
+                        await placeholder_message.edit_text(escape_markdown_v2(searching_raw),
+                                                            parse_mode=constants.ParseMode.MARKDOWN_V2)
+                    except BadRequest:
+                        await placeholder_message.edit_text(searching_raw, parse_mode=None)
+                    initial_placeholder_text = placeholder_message.text
+                    current_message_text_on_telegram = placeholder_message.text
+                    accumulated_raw_text_for_current_segment = ""
+                continue
+
+            if not isinstance(chunk, str): continue
+
+            chunk_raw = chunk
+            full_raw_response_for_history += chunk_raw
+            accumulated_raw_text_for_current_segment += chunk_raw
+            current_time = asyncio.get_event_loop().time()
+            current_placeholder_mdv2_has_failed_parsing = context.chat_data['mdv2_failed_for_msg_id'].get(
+                placeholder_message.message_id, False)
+            should_edit_now = (
+                        current_message_text_on_telegram == initial_placeholder_text or current_time - last_edit_time >= STREAM_UPDATE_INTERVAL or len(
+                    chunk_raw) > 70)
+
+            if accumulated_raw_text_for_current_segment.strip() and should_edit_now:
+                raw_text_to_process = accumulated_raw_text_for_current_segment
+                text_to_send_this_edit, parse_mode_for_this_edit_attempt = "", None
+                if current_placeholder_mdv2_has_failed_parsing:
+                    text_to_send_this_edit = transform_markdown_fallback(raw_text_to_process)
+                    parse_mode_for_this_edit_attempt = None
+                else:
+                    text_to_send_this_edit = escape_markdown_v2(raw_text_to_process)
+                    parse_mode_for_this_edit_attempt = constants.ParseMode.MARKDOWN_V2
+                if len(text_to_send_this_edit) > TELEGRAM_MAX_MESSAGE_LENGTH:
+                    logger.info(f"Chat {chat_id} (Text Stream): Text for chosen format too long. Offloading.")
+                    continue_message_raw = get_template("response_continued_below", user_lang_code,
+                                                        default_val="...(see new messages below)...")
+                    try:
+                        if placeholder_message.text != escape_markdown_v2(continue_message_raw):
+                            await placeholder_message.edit_text(escape_markdown_v2(continue_message_raw),
+                                                                parse_mode=constants.ParseMode.MARKDOWN_V2)
+                    except BadRequest:
+                        if placeholder_message.text != continue_message_raw:
+                            await placeholder_message.edit_text(continue_message_raw, parse_mode=None)
+                    await send_long_message_fallback(update, context, raw_text_to_process)
+                    accumulated_raw_text_for_current_segment = ""
+                    if placeholder_message.message_id in context.chat_data['mdv2_failed_for_msg_id']:
+                        del context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id]
+                    continuing_raw = get_template("continuing_response", user_lang_code,
+                                                  default_val="...continuing response...")
+                    try:
+                        placeholder_message = await update.message.reply_text(escape_markdown_v2(continuing_raw),
+                                                                              parse_mode=constants.ParseMode.MARKDOWN_V2)
+                        current_placeholder_parse_mode = constants.ParseMode.MARKDOWN_V2
+                    except BadRequest:
+                        placeholder_message = await update.message.reply_text(continuing_raw, parse_mode=None)
+                        current_placeholder_parse_mode = None
+                    initial_placeholder_text = placeholder_message.text
+                    current_message_text_on_telegram = placeholder_message.text
+                else:
+                    try:
+                        if text_to_send_this_edit != current_message_text_on_telegram:
+                            await context.bot.edit_message_text(
+                                text_to_send_this_edit, chat_id, placeholder_message.message_id,
+                                parse_mode=parse_mode_for_this_edit_attempt
+                            )
+                            current_placeholder_parse_mode = parse_mode_for_this_edit_attempt
+                            current_message_text_on_telegram = text_to_send_this_edit
+                            if parse_mode_for_this_edit_attempt == constants.ParseMode.MARKDOWN_V2:
+                                context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id] = False
+                        logger.debug(
+                            f"Chat {chat_id} (Text Stream): Edit with {'MDV2' if parse_mode_for_this_edit_attempt else 'PLAIN'} successful.")
+                    except BadRequest as e_edit_stream:
+                        if "message is not modified" in str(e_edit_stream).lower():
+                            pass
+                        elif parse_mode_for_this_edit_attempt == constants.ParseMode.MARKDOWN_V2 and any(
+                                err_str in str(e_edit_stream).lower() for err_str in
+                                ["can't parse entities", "unescaped", "can't find end of", "nested entities"]):
+                            logger.warning(
+                                f"Chat {chat_id} (Text Stream): MDV2 FAILED PARSING: {e_edit_stream}. Sticking to plain for msg_id {placeholder_message.message_id}.")
+                            context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id] = True
+                            context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id] = True
+                            transformed_retry = transform_markdown_fallback(raw_text_to_process)
+                            if len(transformed_retry) > TELEGRAM_MAX_MESSAGE_LENGTH:
+                                transformed_retry = transformed_retry[:TELEGRAM_MAX_MESSAGE_LENGTH]
+                            try:
+                                if transformed_retry != current_message_text_on_telegram:
+                                    await context.bot.edit_message_text(transformed_retry, chat_id,
+                                                                        placeholder_message.message_id, parse_mode=None)
+                                    current_placeholder_parse_mode = None
+                                    current_message_text_on_telegram = transformed_retry
+                                logger.info(
+                                    f"Chat {chat_id} (Text Stream): Retry edit with TRANSFORMED PLAIN successful.")
+                            except BadRequest as e_plain_retry_stream:
+                                if "message is not modified" not in str(e_plain_retry_stream).lower():
+                                    logger.error(
+                                        f"Chat {chat_id} (Text Stream): TRANSFORMED PLAIN retry FAILED: {e_plain_retry_stream}")
+                        else:
+                            logger.error(
+                                f"Chat {chat_id} (Text Stream): Unhandled BadRequest during stream edit: {e_edit_stream}")
+                last_edit_time = current_time
+                await asyncio.sleep(0.05)
+
+        # --- Final Edit & History Saving ---
+        final_segment_raw = accumulated_raw_text_for_current_segment.strip()
+        if final_segment_raw:
+            final_placeholder_mdv2_has_failed_parsing = context.chat_data['mdv2_failed_for_msg_id'].get(
+                placeholder_message.message_id, False)
+            text_for_final_edit, parse_mode_for_final_edit = "", None
+            if final_placeholder_mdv2_has_failed_parsing:
+                text_for_final_edit = transform_markdown_fallback(final_segment_raw)
+            else:
+                text_for_final_edit = escape_markdown_v2(final_segment_raw)
+                parse_mode_for_final_edit = constants.ParseMode.MARKDOWN_V2
+
+            if len(text_for_final_edit) > TELEGRAM_MAX_MESSAGE_LENGTH:
+                await send_long_message_fallback(update, context, final_segment_raw)
+            else:
+                feedback_keyboard = build_feedback_keyboard(placeholder_message.message_id)
+                try:
+                    await placeholder_message.edit_text(text_for_final_edit, parse_mode=parse_mode_for_final_edit,
+                                                        reply_markup=feedback_keyboard)
+                except BadRequest as e_f_edit:
+                    if "message is not modified" in str(e_f_edit).lower():
+                        pass
+                    elif parse_mode_for_final_edit == constants.ParseMode.MARKDOWN_V2:
+                        transformed_final_fallback = transform_markdown_fallback(final_segment_raw)
+                        if len(transformed_final_fallback) > TELEGRAM_MAX_MESSAGE_LENGTH:
+                            transformed_final_fallback = transformed_final_fallback[:TELEGRAM_MAX_MESSAGE_LENGTH]
+                        await placeholder_message.edit_text(transformed_final_fallback, parse_mode=None,
+                                                            reply_markup=feedback_keyboard)
+        elif not full_raw_response_for_history.strip():
+            # Handle empty response from AI
+            no_response_raw = get_template("gemini_no_response_text", user_lang_code,
+                                           default_val="🤷 No response generated.")
+            await placeholder_message.edit_text(no_response_raw, parse_mode=None)
+
+        # --- Save to Conversation History ---
+        if full_raw_response_for_history.strip() and not any(kw in full_raw_response_for_history.lower() for kw in
+                                                             ["i can't", "sorry", "unable to", "guidelines", "blocked",
+                                                              "cannot provide"]):
+            if update.message.voice and prompt_text:
+                user_text_for_history = prompt_text
+            else:
+                user_text_for_history = update.message.text
+
+                # Now, save the interaction with the guaranteed non-empty user text.
+            if user_text_for_history:
+                conversation_history.append({'role': 'user', 'parts': [{'text': user_text_for_history}]})
+                conversation_history.append({'role': 'model', 'parts': [{'text': full_raw_response_for_history}]})
+                context.chat_data['conversation_history'] = conversation_history[-(MAX_CONVERSATION_TURNS * 2):]
+                logger.debug(f"History saved. User part: '{user_text_for_history[:50]}...'")
+            else:
+                logger.warning("Could not save to history because user text was empty.")
+
+    except Exception as e_outer:
+        logger.error(f"Chat {chat_id}: Unhandled error in _core_ai_handler: {e_outer}", exc_info=True)
+        err_proc_raw = get_template("unexpected_error_processing", user_lang_code,
+                                    default_val="⚠️ An unexpected error occurred.")
+        try:
+            if placeholder_message:
+                await placeholder_message.edit_text(escape_markdown_v2(err_proc_raw),
+                                                    parse_mode=constants.ParseMode.MARKDOWN_V2)
+        except Exception:
+            pass
+    finally:
+        if placeholder_message and placeholder_message.message_id in context.chat_data.get('mdv2_failed_for_msg_id',
+                                                                                           {}):
+            del context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id]
+        logger.info(f"--- _core_ai_handler finished for chat {chat_id} ---")
+
+
 async def _process_image(update: Update, context: ContextTypes.DEFAULT_TYPE, file_id: str, prompt_text: str):
     """
     A generic helper function to download, analyze, and stream a response for a given image file_id and prompt.
@@ -636,42 +888,179 @@ async def _process_url(update: Update, context: ContextTypes.DEFAULT_TYPE, url: 
         except Exception:
             pass
 
-# NEW HELPER FUNCTION 2: To handle follow-up questions
 async def _process_url_follow_up(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Handles a follow-up question about the last processed URL.
+    Handles a follow-up question by building a new prompt and calling the core AI handler.
     """
     user_question = update.message.text
     stored_text = context.chat_data.get('last_url_content')
     url_source = context.chat_data.get('last_url_source', 'the last article')
-
     user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
-    language_name_for_prompt = SUPPORTED_LANGUAGES.get(user_lang_code, "English").split(" (")[0]
+    language_name = SUPPORTED_LANGUAGES.get(user_lang_code, "English").split(" (")[0]
 
-    logger.info(f"Handling follow-up question for URL: {url_source} in {language_name_for_prompt}")
+    logger.info(f"Handling follow-up question for URL: {url_source} in {language_name}")
 
+    # Build the new, detailed prompt for the AI
     follow_up_prompt = (
-        f"The user is asking a follow-up question in {language_name_for_prompt} about an article from {url_source}. "
-        f"Please answer their question in {language_name_for_prompt}, based *only* on the provided article content.\n\n"
+        f"The user is asking a follow-up question in {language_name} about an article from {url_source}. "
+        f"Please answer their question in {language_name}, based *only* on the provided article content.\n\n"
         f"User's question: '{user_question}'.\n\n"
         f"FULL original text of the article for context: \n\n---\n\n{stored_text}\n---"
     )
 
-    # Since this is a follow-up, we can reuse the main handle_message logic.
-    # To avoid code duplication, we'll just modify the prompt and let handle_message do the rest.
-    # A cleaner but more complex way would be to refactor handle_message's streaming logic
-    # into its own helper that both can call. For now, this is a pragmatic solution.
-
-    # To prevent re-triggering this logic, we clear the context before calling the main handler
+    # Clear the context so the *next* message isn't treated as a follow-up
     context.chat_data.pop('last_url_content', None)
     context.chat_data.pop('last_url_source', None)
 
-    # Create a "fake" update with the new, combined prompt to pass to the main handler
-    fake_update = update
-    fake_update.message.text = follow_up_prompt
+    # Get the existing conversation history to maintain context
+    conversation_history = context.chat_data.get('conversation_history', [])
 
-    # Directly call the main message handler with our new prompt
-    await handle_message(fake_update, context)
+    # Call the core handler with the special follow-up prompt
+    await _core_ai_handler(update, context, follow_up_prompt, conversation_history)
+
+@rate_limit()
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handles all incoming text messages. Acts as a router to determine the user's intent
+    and calls the appropriate handler or the core AI logic.
+    """
+    # Preliminary checks
+    if not update.message or not update.message.text:
+        return
+
+    # --- ROUTING LOGIC ---
+
+    # ROUTE 1: Check for a URL in the message text
+    url_pattern = r'https?://[^\s/$.?#].[^\s]*'
+    found_url = re.search(url_pattern, update.message.text)
+    if found_url:
+        logger.info(f"URL detected in message: {found_url.group(0)}")
+        await _process_url(update, context, found_url.group(0))
+        return
+
+    # ROUTE 2: Check for a reply to one of the bot's own messages
+    if update.message.reply_to_message and update.message.reply_to_message.from_user.is_bot:
+        # Sub-route 2a: Is it a follow-up to a URL summary?
+        if 'last_url_content' in context.chat_data:
+            await _process_url_follow_up(update, context)
+            return
+
+        # Sub-route 2b: Is it a reply to a photo?
+        if update.message.reply_to_message.photo:
+            logger.info("User is replying to a photo. Routing to image processor.")
+            file_id = update.message.reply_to_message.photo[-1].file_id
+            await _process_image(update, context, file_id, update.message.text)
+            return
+
+    # --- DEFAULT ACTION: If no special routes were taken, handle as a standard text query ---
+    increment_stat(context, "messages_received")
+    logger.info(f"Handling standard text message: '{update.message.text[:100]}...'")
+
+    conversation_history = context.chat_data.get('conversation_history', [])
+
+    # Call the core handler with the user's direct message text
+    await _core_ai_handler(update, context, update.message.text, conversation_history)
+
+
+@rate_limit(cooldown=10)  # Voice processing is more intensive, a longer cooldown is wise
+async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Handles a voice message by downloading it, transcribing it via OpenAI's Whisper API,
+    and then routing the resulting text to the core AI handler for a response.
+    Includes robust error handling for API and file operations.
+    """
+    # First, check if the OpenAI client was successfully initialized at startup
+    if not openai_client:
+        logger.error("Received a voice message, but OpenAI client is not available (API key likely missing).")
+        # Optionally, send a message to the user that the feature is disabled
+        # await update.message.reply_text("Sorry, the voice message feature is currently disabled.")
+        return
+
+    logger.info(f"Received a voice message from user {update.effective_user.id}. Processing...")
+    increment_stat(context, "voice_messages_received")
+
+    user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
+
+    # 1. Send an initial "transcribing" placeholder to give immediate feedback
+    placeholder_text = get_template("transcribing_voice", user_lang_code,
+                                    default_val="Transcribing your voice message... 🎤")
+    placeholder_message = await update.message.reply_text(escape_markdown_v2(placeholder_text),
+                                                          parse_mode=constants.ParseMode.MARKDOWN_V2)
+
+    temp_file_path = None
+    try:
+        # 2. Download the voice file from Telegram
+        voice = update.message.voice
+        voice_file = await context.bot.get_file(voice.file_id)
+
+        # Define a unique path for the temporary audio file
+        temp_file_path = os.path.join(TEMP_DIR, f"{voice.file_unique_id}.oga")
+        await voice_file.download_to_drive(temp_file_path)
+
+        # 3. Send the audio file to the Whisper API for transcription
+        # This is a blocking I/O operation, so we run it in a separate thread
+        # to avoid blocking the bot's main event loop.
+        with open(temp_file_path, "rb") as audio_file:
+            transcription = await asyncio.to_thread(
+                openai_client.audio.transcriptions.create,
+                model="whisper-1",
+                file=audio_file
+            )
+
+        transcribed_text = transcription.text
+        if not transcribed_text.strip():
+            raise ValueError("Transcription resulted in empty text.")
+
+        logger.info(f"Transcription successful: '{transcribed_text}'")
+
+        # 4. Update the placeholder to show the user what we heard. This builds confidence.
+        prompt_info_text = get_template(
+            "transcribed_prompt_info",
+            user_lang_code,
+            default_val="You said: \"_{transcribed_text}_\"\n\nNow, thinking...",
+            transcribed_text=transcribed_text
+        )
+        await placeholder_message.edit_text(escape_markdown_v2(prompt_info_text),
+                                            parse_mode=constants.ParseMode.MARKDOWN_V2)
+
+        # 5. Route the transcribed text to our core AI handler.
+        # The core handler will create its OWN placeholder and manage the final response.
+        conversation_history = context.chat_data.get('conversation_history', [])
+        await _core_ai_handler(update, context, transcribed_text, conversation_history)
+
+        # 6. Delete our now-redundant placeholder message for a cleaner UI.
+        await placeholder_message.delete()
+
+    # --- Specific Error Handling ---
+    except RateLimitError as e:
+        logger.error(f"OpenAI Rate Limit / Quota Error: {e}")
+        error_text = get_template("transcription_failed_quota", user_lang_code,
+                                  default_val="Sorry, the transcription service is currently unavailable due to high demand. Please try again later.")
+        await placeholder_message.edit_text(escape_markdown_v2(error_text), parse_mode=constants.ParseMode.MARKDOWN_V2)
+
+    except APIConnectionError as e:
+        logger.error(f"OpenAI API Connection Error: {e}")
+        error_text = get_template("transcription_failed_connection", user_lang_code,
+                                  default_val="I'm having trouble connecting to the transcription service. Please check your connection and try again later.")
+        await placeholder_message.edit_text(escape_markdown_v2(error_text), parse_mode=constants.ParseMode.MARKDOWN_V2)
+
+    # --- General Error Handling ---
+    except Exception as e:
+        logger.error(f"Failed to process voice message: {e}", exc_info=True)
+        error_text = get_template("transcription_failed_generic", user_lang_code,
+                                  default_val="Sorry, I couldn't understand that audio. Please try speaking more clearly or in a quieter environment.")
+        if placeholder_message:
+            await placeholder_message.edit_text(escape_markdown_v2(error_text),
+                                                parse_mode=constants.ParseMode.MARKDOWN_V2)
+
+    finally:
+        # 7. CRITICAL: Clean up the temporary audio file in all cases (success or failure).
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.remove(temp_file_path)
+                logger.debug(f"Cleaned up temp voice file: {temp_file_path}")
+            except Exception as e_remove:
+                logger.error(f"Error removing temp voice file {temp_file_path}: {e_remove}")
 
 @rate_limit()
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1247,6 +1636,39 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         parse_mode=constants.ParseMode.MARKDOWN_V2
     )
 
+
+async def reset_stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Asks the admin for confirmation before resetting all bot statistics.
+    Admin-only command.
+    """
+    # This command is admin-only, but we also add a filter in add_all_handlers for security.
+    user_id = update.effective_user.id
+    if user_id != ADMIN_ID:
+        return
+
+    logger.info(f"Admin user {user_id} initiated /reset_stats command.")
+
+    # Get text for the prompt and buttons in the admin's chosen language (or default)
+    user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
+
+    prompt_text = get_template("reset_stats_prompt", user_lang_code)
+    yes_button_text = get_template("yes_button_text", user_lang_code, default_val="Yes, Reset")
+    no_button_text = get_template("no_button_text", user_lang_code, default_val="No, Cancel")
+
+    # Create the confirmation keyboard
+    keyboard = [[
+        InlineKeyboardButton(yes_button_text, callback_data="confirm_reset_stats"),
+        InlineKeyboardButton(no_button_text, callback_data="cancel_reset_stats"),
+    ]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text(
+        escape_markdown_v2(prompt_text),
+        reply_markup=reply_markup,
+        parse_mode=constants.ParseMode.MARKDOWN_V2
+    )
+
 async def new_chat_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Resets the conversation history for the current chat.
@@ -1441,6 +1863,7 @@ async def language_set_callback_handler(update: Update, context: ContextTypes.DE
         err_text = get_template("unexpected_error", current_lang)  # Add this template
         await query.edit_message_text(text=escape_markdown_v2(err_text), parse_mode=constants.ParseMode.MARKDOWN_V2)
 
+
 async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     if not query.message:
@@ -1451,8 +1874,11 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
     chat_id = query.message.chat_id
     user_id = query.from_user.id
 
-    if query.data.startswith("set_lang_") or query.data.startswith("lang_page_"):
-        logger.warning(f"Chat {chat_id}: Lang CB {query.data} reached generic_button_cb.")
+    # This check is good practice, but the specific handlers for these
+    # should catch them first. This is a safe fallback.
+    if query.data.startswith("set_lang_") or query.data.startswith("lang_page_") or query.data.startswith("feedback:"):
+        logger.warning(
+            f"Chat {chat_id}: Specific CB '{query.data}' was not caught and fell through to generic_button_cb.")
         await query.answer("Processing...")
         return
 
@@ -1461,29 +1887,62 @@ async def button_callback_handler(update: Update, context: ContextTypes.DEFAULT_
     logger.info(f"Chat {chat_id}: User {user_id} pressed button: {callback_data}")
 
     text_to_send_raw = ""  # Raw text from template
+
+    # Use the language of the user who pressed the button for the response
     response_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
     response_lang_display_name = SUPPORTED_LANGUAGES.get(response_lang_code, "English").split(" (")[0]
 
     if callback_data == "confirm_start_reset_actions":
         context.chat_data.pop('conversation_history', None)
-        logger.info(f"Chat {chat_id}: History reset. Language remains '{response_lang_display_name}'.")
+        logger.info(
+            f"Chat {chat_id}: History reset by user {user_id}. Language remains '{response_lang_display_name}'.")
         text_to_send_raw = get_template(
             "history_cleared_confirmation",
             response_lang_code,
             response_lang_display_name=response_lang_display_name
         )
     elif callback_data == "cancel_start_reset_actions":
-        logger.info(f"Chat {chat_id}: Reset cancelled. Language remains '{response_lang_display_name}'.")
+        logger.info(f"Chat {chat_id}: History reset cancelled by user {user_id}.")
         text_to_send_raw = get_template(
             "reset_cancelled_confirmation",
             response_lang_code,
             response_lang_display_name=response_lang_display_name
         )
 
+    # --- START OF NEWLY ADDED LOGIC ---
+    elif callback_data == "confirm_reset_stats":
+        # Double-check that the user is the admin before performing the action
+        if user_id != ADMIN_ID:
+            logger.warning(f"NON-ADMIN User {user_id} tried to confirm stats reset. Ignoring.")
+            return
+
+        # Reset the stats dictionary
+        if 'stats' in context.bot_data:
+            context.bot_data['stats'] = {}
+            logger.info(f"ADMIN {user_id} confirmed. All bot statistics have been reset.")
+
+        text_to_send_raw = get_template("reset_stats_confirmation", response_lang_code,
+                                        default_val="✅ All bot statistics have been successfully reset.")
+
+    elif callback_data == "cancel_reset_stats":
+        if user_id != ADMIN_ID:
+            logger.warning(f"NON-ADMIN User {user_id} tried to cancel stats reset. Ignoring.")
+            return
+
+        logger.info(f"ADMIN {user_id} cancelled stats reset.")
+        # We can reuse the existing "reset cancelled" message template
+        text_to_send_raw = get_template(
+            "reset_cancelled_confirmation",
+            response_lang_code,
+            response_lang_display_name=response_lang_display_name
+        )
+    # --- END OF NEWLY ADDED LOGIC ---
+
+    # This block for sending the final message remains the same
     if text_to_send_raw:
         try:
             await query.edit_message_text(
-                text=escape_markdown_v2(text_to_send_raw),  # Escape after getting from template
+                text=escape_markdown_v2(text_to_send_raw),
                 reply_markup=None,
                 parse_mode=constants.ParseMode.MARKDOWN_V2
             )
@@ -1559,258 +2018,6 @@ def transform_markdown_fallback(text: str) -> str:
 
     logger.debug(f"Smarter fallback result starts: '{transformed_text_final[:100].replace(chr(10), ' ')}...'")
     return transformed_text_final.strip()
-
-@rate_limit()
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Handles all incoming text messages. Acts as a router to determine if the message
-    is a standard text query or a contextual reply to a previously sent media file.
-    """
-    # --- Start of function is unchanged ---
-    if not update.message or not update.message.text:
-        return
-
-    # --- ROUTING LOGIC ---
-
-    # ## ROUTE 1: Check for a URL in the message text ##
-    # A simple regex to find URLs
-    url_pattern = r'https?://[^\s/$.?#].[^\s]*'
-    found_url = re.search(url_pattern, update.message.text)
-
-    if found_url:
-        logger.info(f"URL detected in message: {found_url.group(0)}")
-        await _process_url(update, context, found_url.group(0))
-        return  # Stop further processing
-
-    # ## ROUTE 2: Check for a reply to a bot message (our previous summary) ##
-    if update.message.reply_to_message and update.message.reply_to_message.from_user.is_bot:
-        # Check if it's a follow-up to the last summarized URL
-        if 'last_url_content' in context.chat_data:
-            await _process_url_follow_up(update, context)
-            return  # Stop further processing
-
-        # Check for reply to photo (existing logic)
-        if update.message.reply_to_message.photo:
-            logger.info("User is replying to a photo. Routing to image processor.")
-            file_id = update.message.reply_to_message.photo[-1].file_id
-            new_prompt = update.message.text
-            await _process_image(update, context, file_id, new_prompt)
-            return
-
-    # --- IF NO SPECIAL ROUTE WAS TAKEN, PROCEED WITH STANDARD TEXT HANDLING ---
-
-    increment_stat(context, "messages_received")
-    if 'mdv2_failed_for_msg_id' not in context.chat_data:
-        context.chat_data['mdv2_failed_for_msg_id'] = {}
-    if update.message.reply_to_message:
-        replied_message = update.message.reply_to_message
-        if replied_message.photo and update.message.text:
-            logger.info("User is replying to a photo. Routing to image processor.")
-            file_id = replied_message.photo[-1].file_id
-            new_prompt = update.message.text
-            await _process_image(update, context, file_id, new_prompt)
-            return
-    if not update.message.text:
-        return
-    user, message_text, chat_id = update.effective_user, update.message.text, update.effective_chat.id
-    logger.info(f"Chat {chat_id}: User {user.id} handling standard text message: '{message_text[:100]}...'")
-    user_lang_code = context.user_data.get('selected_language', DEFAULT_LANGUAGE_CODE)
-    lang_name_prompt = SUPPORTED_LANGUAGES.get(user_lang_code, SUPPORTED_LANGUAGES[DEFAULT_LANGUAGE_CODE]).split(" (")[0]
-    system_prompt = DEFAULT_SYSTEM_PROMPT_BASE + f"\n\nImportant: Please provide your entire response in {lang_name_prompt}."
-    conversation_history = context.chat_data.get('conversation_history', [])
-    if 'mdv2_failed_for_msg_id' not in context.chat_data:
-        context.chat_data['mdv2_failed_for_msg_id'] = {}
-    placeholder_message: Message | None = None
-    current_placeholder_parse_mode: constants.ParseMode | None = constants.ParseMode.MARKDOWN_V2
-    try:
-        thinking_raw = get_template("thinking", user_lang_code, default_val="🧠 Thinking...")
-        placeholder_message = await update.message.reply_text(escape_markdown_v2(thinking_raw),
-                                                              parse_mode=constants.ParseMode.MARKDOWN_V2)
-    except BadRequest:
-        thinking_raw = get_template("thinking", user_lang_code, default_val="🧠 Thinking...")
-        placeholder_message = await update.message.reply_text(thinking_raw, parse_mode=None)
-        current_placeholder_parse_mode = None
-    except Exception as e:
-        logger.error(f"Chat {chat_id}: Failed to send initial placeholder for text message: {e}", exc_info=True)
-        return
-    if not placeholder_message:
-        logger.error(f"Chat {chat_id}: placeholder_message is None after initial sending. Cannot proceed.")
-        return
-    initial_placeholder_text = placeholder_message.text
-    current_message_text_on_telegram = placeholder_message.text
-    accumulated_raw_text_for_current_segment = ""
-    full_raw_response_for_history = ""
-    last_edit_time = asyncio.get_event_loop().time()
-    try:
-        logger.debug(f"Chat {chat_id}: Calling ask_gemini_stream with tool support.")
-        # --- Streaming loop is unchanged ---
-        async for chunk in ask_gemini_stream(message_text, conversation_history, system_prompt):
-            if isinstance(chunk, dict) and chunk.get("tool_call_start"):
-                tool_name = chunk.get("tool_name", "unknown_tool")
-                logger.info(f"Chat {chat_id}: Received tool call signal for '{tool_name}'.")
-                if tool_name == "perform_web_search":
-                    increment_stat(context, "web_searches")
-                    searching_raw = get_template("searching_web", user_lang_code, default_val="Searching the web... 🌐")
-                    try:
-                        await placeholder_message.edit_text(escape_markdown_v2(searching_raw),
-                                                            parse_mode=constants.ParseMode.MARKDOWN_V2)
-                        current_placeholder_parse_mode = constants.ParseMode.MARKDOWN_V2
-                    except BadRequest:
-                        await placeholder_message.edit_text(searching_raw, parse_mode=None)
-                        current_placeholder_parse_mode = None
-                    initial_placeholder_text = placeholder_message.text
-                    current_message_text_on_telegram = placeholder_message.text
-                    accumulated_raw_text_for_current_segment = ""
-                continue
-            if not isinstance(chunk, str): continue
-            chunk_raw = chunk
-            full_raw_response_for_history += chunk_raw
-            accumulated_raw_text_for_current_segment += chunk_raw
-            current_time = asyncio.get_event_loop().time()
-            current_placeholder_mdv2_has_failed_parsing = context.chat_data['mdv2_failed_for_msg_id'].get(placeholder_message.message_id, False)
-            should_edit_now = (current_message_text_on_telegram == initial_placeholder_text or current_time - last_edit_time >= STREAM_UPDATE_INTERVAL or len(chunk_raw) > 70)
-            if accumulated_raw_text_for_current_segment.strip() and should_edit_now:
-                raw_text_to_process = accumulated_raw_text_for_current_segment
-                text_to_send_this_edit, parse_mode_for_this_edit_attempt = "", None
-                if current_placeholder_mdv2_has_failed_parsing:
-                    text_to_send_this_edit = transform_markdown_fallback(raw_text_to_process)
-                    parse_mode_for_this_edit_attempt = None
-                else:
-                    text_to_send_this_edit = escape_markdown_v2(raw_text_to_process)
-                    parse_mode_for_this_edit_attempt = constants.ParseMode.MARKDOWN_V2
-                if len(text_to_send_this_edit) > TELEGRAM_MAX_MESSAGE_LENGTH:
-                    logger.info(f"Chat {chat_id} (Text Stream): Text for chosen format too long. Offloading.")
-                    continue_message_raw = get_template("response_continued_below", user_lang_code, default_val="...(see new messages below)...")
-                    try:
-                        if placeholder_message.text != escape_markdown_v2(continue_message_raw):
-                            await placeholder_message.edit_text(escape_markdown_v2(continue_message_raw), parse_mode=constants.ParseMode.MARKDOWN_V2)
-                    except BadRequest:
-                        if placeholder_message.text != continue_message_raw:
-                            await placeholder_message.edit_text(continue_message_raw, parse_mode=None)
-                    await send_long_message_fallback(update, context, raw_text_to_process)
-                    accumulated_raw_text_for_current_segment = ""
-                    if placeholder_message.message_id in context.chat_data['mdv2_failed_for_msg_id']:
-                        del context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id]
-                    continuing_raw = get_template("continuing_response", user_lang_code, default_val="...continuing response...")
-                    try:
-                        placeholder_message = await update.message.reply_text(escape_markdown_v2(continuing_raw), parse_mode=constants.ParseMode.MARKDOWN_V2)
-                        current_placeholder_parse_mode = constants.ParseMode.MARKDOWN_V2
-                    except BadRequest:
-                        placeholder_message = await update.message.reply_text(continuing_raw, parse_mode=None)
-                        current_placeholder_parse_mode = None
-                    initial_placeholder_text = placeholder_message.text
-                    current_message_text_on_telegram = placeholder_message.text
-                else:
-                    try:
-                        if text_to_send_this_edit != current_message_text_on_telegram:
-                            await context.bot.edit_message_text(
-                                text_to_send_this_edit, chat_id, placeholder_message.message_id,
-                                parse_mode=parse_mode_for_this_edit_attempt
-                            )
-                            current_placeholder_parse_mode = parse_mode_for_this_edit_attempt
-                            current_message_text_on_telegram = text_to_send_this_edit
-                            if parse_mode_for_this_edit_attempt == constants.ParseMode.MARKDOWN_V2:
-                                context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id] = False
-                        logger.debug(f"Chat {chat_id} (Text Stream): Edit with {'MDV2' if parse_mode_for_this_edit_attempt else 'PLAIN'} successful.")
-                    except BadRequest as e_edit_stream:
-                        if "message is not modified" in str(e_edit_stream).lower():
-                            pass
-                        elif parse_mode_for_this_edit_attempt == constants.ParseMode.MARKDOWN_V2 and any(err_str in str(e_edit_stream).lower() for err_str in ["can't parse entities", "unescaped", "can't find end of", "nested entities"]):
-                            logger.warning(f"Chat {chat_id} (Text Stream): MDV2 FAILED PARSING: {e_edit_stream}. Sticking to plain for msg_id {placeholder_message.message_id}.")
-                            context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id] = True
-                            transformed_retry = transform_markdown_fallback(raw_text_to_process)
-                            if len(transformed_retry) > TELEGRAM_MAX_MESSAGE_LENGTH:
-                                transformed_retry = transformed_retry[:TELEGRAM_MAX_MESSAGE_LENGTH]
-                            try:
-                                if transformed_retry != current_message_text_on_telegram:
-                                    await context.bot.edit_message_text(transformed_retry, chat_id, placeholder_message.message_id, parse_mode=None)
-                                    current_placeholder_parse_mode = None
-                                    current_message_text_on_telegram = transformed_retry
-                                logger.info(f"Chat {chat_id} (Text Stream): Retry edit with TRANSFORMED PLAIN successful.")
-                            except BadRequest as e_plain_retry_stream:
-                                if "message is not modified" not in str(e_plain_retry_stream).lower():
-                                    logger.error(f"Chat {chat_id} (Text Stream): TRANSFORMED PLAIN retry FAILED: {e_plain_retry_stream}")
-                        else:
-                            logger.error(f"Chat {chat_id} (Text Stream): Unhandled BadRequest during stream edit: {e_edit_stream}")
-                last_edit_time = current_time
-                await asyncio.sleep(0.05)
-
-        # --- Final Edit & History Saving ---
-        logger.info(f"Chat {chat_id} (Text): Stream finished. Full raw response length: {len(full_raw_response_for_history)}.")
-        final_segment_raw = accumulated_raw_text_for_current_segment.strip()
-
-        if final_segment_raw:
-            final_placeholder_mdv2_has_failed_parsing = context.chat_data['mdv2_failed_for_msg_id'].get(placeholder_message.message_id, False)
-            text_for_final_edit, parse_mode_for_final_edit = "", None
-            if final_placeholder_mdv2_has_failed_parsing:
-                text_for_final_edit = transform_markdown_fallback(final_segment_raw)
-            else:
-                text_for_final_edit = escape_markdown_v2(final_segment_raw)
-                parse_mode_for_final_edit = constants.ParseMode.MARKDOWN_V2
-            if len(text_for_final_edit) > TELEGRAM_MAX_MESSAGE_LENGTH:
-                await send_long_message_fallback(update, context, final_segment_raw)
-            else:
-                feedback_keyboard = build_feedback_keyboard(placeholder_message.message_id)
-                try:
-                    # #######################################################################
-                    # ## THE FIX: REMOVED THE `if text_for_final_edit != ...` CONDITION ##
-                    # #######################################################################
-                    # This FORCES the final edit, which adds the buttons.
-                    # The "message is not modified" error is handled gracefully below.
-                    await placeholder_message.edit_text(text_for_final_edit,
-                                                        parse_mode=parse_mode_for_final_edit,
-                                                        reply_markup=feedback_keyboard)
-                    logger.info(f"Chat {chat_id} (Text Final): Final edit with {'MDV2' if parse_mode_for_final_edit else 'PLAIN'} successful.")
-                except BadRequest as e_f_edit:
-                    if "message is not modified" in str(e_f_edit).lower():
-                        # This is now expected and harmless. It means the text was already final,
-                        # but the buttons were added successfully (or were already there).
-                        pass
-                    elif parse_mode_for_final_edit == constants.ParseMode.MARKDOWN_V2:
-                        logger.warning(f"Chat {chat_id} (Text Final): Final MDV2 edit FAILED PARSING: {e_f_edit}. Trying plain fallback.")
-                        transformed_final_fallback = transform_markdown_fallback(final_segment_raw)
-                        if len(transformed_final_fallback) > TELEGRAM_MAX_MESSAGE_LENGTH:
-                            transformed_final_fallback = transformed_final_fallback[:TELEGRAM_MAX_MESSAGE_LENGTH]
-                        try:
-                            await placeholder_message.edit_text(transformed_final_fallback, parse_mode=None, reply_markup=feedback_keyboard)
-                            logger.info(f"Chat {chat_id} (Text Final): Final edit with TRANSFORMED PLAIN fallback successful.")
-                        except BadRequest as e_f_plain_fb:
-                            if "message is not modified" not in str(e_f_plain_fb).lower():
-                                logger.error(f"Chat {chat_id} (Text Final): Final plain fallback FAILED: {e_f_plain_fb}")
-                    else:
-                        logger.error(f"Chat {chat_id} (Text Final): Final edit failed: {e_f_edit}")
-
-        elif not full_raw_response_for_history.strip():
-            no_response_raw = get_template("gemini_no_response_text", user_lang_code, default_val="🤷 No response generated.")
-            try:
-                if placeholder_message.text != escape_markdown_v2(no_response_raw):
-                    await placeholder_message.edit_text(escape_markdown_v2(no_response_raw), parse_mode=constants.ParseMode.MARKDOWN_V2)
-            except BadRequest:
-                if placeholder_message.text != no_response_raw:
-                    await placeholder_message.edit_text(no_response_raw, parse_mode=None)
-
-        # --- History saving is unchanged ---
-        if full_raw_response_for_history.strip() and not any(kw in full_raw_response_for_history.lower() for kw in ["i can't", "sorry", "unable to", "guidelines", "blocked", "cannot provide"]):
-            conversation_history.append({'role': 'user', 'parts': [{'text': message_text}]})
-            conversation_history.append({'role': 'model', 'parts': [{'text': full_raw_response_for_history}]})
-            context.chat_data['conversation_history'] = conversation_history[-(MAX_CONVERSATION_TURNS * 2):]
-            logger.debug(f"Chat {chat_id}: History updated. Len: {len(context.chat_data['conversation_history'])}.")
-        else:
-            logger.warning(f"Chat {chat_id}: AI response empty/refusal. Not saved. Preview: '{full_raw_response_for_history[:100].replace(chr(10), ' ')}...'")
-
-    except Exception as e_outer:
-        logger.error(f"Chat {chat_id}: Unhandled error in handle_message: {e_outer}", exc_info=True)
-        err_proc_raw = get_template("unexpected_error_processing", user_lang_code, default_val="⚠️ An unexpected error occurred.")
-        try:
-            if placeholder_message and placeholder_message.text != escape_markdown_v2(err_proc_raw):
-                await placeholder_message.edit_text(escape_markdown_v2(err_proc_raw), parse_mode=constants.ParseMode.MARKDOWN_V2)
-        except Exception:
-            pass
-    finally:
-        if placeholder_message and placeholder_message.message_id in context.chat_data.get('mdv2_failed_for_msg_id', {}):
-            del context.chat_data['mdv2_failed_for_msg_id'][placeholder_message.message_id]
-        logger.info(f"--- handle_message finished for chat {chat_id} ---")
-
 
 # Your existing send_long_message_fallback from the provided context
 # (Make sure it has the `context: ContextTypes.DEFAULT_TYPE` parameter if it needs to send messages via context.bot
@@ -2035,6 +2242,7 @@ def add_all_handlers(application: "Application"):
     # --- Command Handlers ---
     if ADMIN_ID:
         application.add_handler(CommandHandler("stats", stats_command, filters=filters.User(user_id=ADMIN_ID)))
+        application.add_handler(CommandHandler("reset_stats", reset_stats_command, filters=filters.User(user_id=ADMIN_ID)))
 
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
@@ -2042,6 +2250,7 @@ def add_all_handlers(application: "Application"):
     application.add_handler(CommandHandler("new", new_chat_command))
 
     # --- Callback Query Handlers ---
+    application.add_handler(MessageHandler(filters.VOICE, handle_voice_message))
     application.add_handler(CallbackQueryHandler(language_set_callback_handler, pattern=r"^set_lang_"))
     application.add_handler(CallbackQueryHandler(language_page_callback_handler, pattern=r"^lang_page_"))
     application.add_handler(CallbackQueryHandler(feedback_callback_handler, pattern=r"^feedback:"))
