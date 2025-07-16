@@ -215,7 +215,8 @@ async def ask_gemini_non_stream(
     This is necessary for the Creator-Critic pattern.
     """
     try:
-        model_name = "gemini-1.5-flash-latest"  # Using Flash to keep it faster and cheaper
+        model_name = "models/gemini-2.5-flash"
+        # model_name = "gemini-1.5-flash-latest"  # Using Flash to keep it faster and cheaper
         model = genai.GenerativeModel(model_name, system_instruction=system_prompt)
 
         chat_session = model.start_chat(history=conversation_history)

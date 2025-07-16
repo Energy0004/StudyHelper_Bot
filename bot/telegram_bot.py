@@ -9,7 +9,6 @@ import asyncio
 from functools import wraps
 
 import httpx
-import requests
 from bs4 import BeautifulSoup
 from openai import OpenAI, RateLimitError, APIConnectionError
 
