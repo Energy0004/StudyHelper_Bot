@@ -54,7 +54,10 @@ async def ask_gemini_stream(
     This version uses 'auto' tool-calling mode, relying on a strong system
     prompt to guide the model, which can prevent tool-looping behavior.
     """
-    model_name = "gemini-1.5-flash-latest"
+    # model_name = "gemini-1.5-flash-latest"
+    # model_name = "models/gemini-2.5-pro"
+    model_name = "models/gemini-2.5-flash"
+
 
     # --- The Final Change: Use 'auto' mode ---
     # This lets the model choose between calling a tool or generating text directly.
@@ -158,7 +161,10 @@ async def ask_gemini_vision_stream(
     Generates content from Gemini based on a prompt and an image, with robust
     timeout handling to prevent getting stuck on slow connections.
     """
-    model_name = "gemini-1.5-flash-latest"
+    # model_name = "gemini-1.5-flash-latest"
+    # model_name = "models/gemini-2.5-pro"
+    model_name = "models/gemini-2.5-flash"
+
     logger.info(f"Using vision model: {model_name}")
     model = genai.GenerativeModel(model_name, system_instruction=system_prompt)
 
@@ -197,5 +203,27 @@ async def ask_gemini_vision_stream(
         logger.error(f"Error during Gemini Vision API call: {e}", exc_info=True)
         # Your original error handling is good for other types of errors.
         yield f"\n\n[AI ERROR: Could not analyze the image. The AI service reported an error.]"
+
+
+async def ask_gemini_non_stream(
+        prompt: str,
+        system_prompt: str,
+        conversation_history: List[Dict[str, Any]]
+) -> str:
+    """
+    Sends a prompt to Gemini and gets the complete response back without streaming.
+    This is necessary for the Creator-Critic pattern.
+    """
+    try:
+        model_name = "gemini-1.5-flash-latest"  # Using Flash to keep it faster and cheaper
+        model = genai.GenerativeModel(model_name, system_instruction=system_prompt)
+
+        chat_session = model.start_chat(history=conversation_history)
+        response = await chat_session.send_message_async(prompt)
+
+        return response.text
+    except Exception as e:
+        logger.error(f"Error in ask_gemini_non_stream: {e}", exc_info=True)
+        return f"[AI ERROR: Could not generate a response. Details: {e}]"
 
 # --- END OF FINAL bot/gemini_utils.py ---

@@ -14,39 +14,39 @@ DEFAULT_LOC_LANG = "en"
 
 TEMPLATES = {
     "welcome_body": {
-        "en": "Hello {first_name}!\nI'm your AI Study Helper. I will now try to speak with you in {greeting_lang_display_name}.",
-        "es": "¡Hola {first_name}!\nSoy tu Ayudante de Estudio AI. Ahora intentaré hablar contigo en {greeting_lang_display_name}.",
-        "fr": "Bonjour {first_name} !\nJe suis votre Assistant d'Étude IA. Je vais maintenant essayer de parler avec vous en {greeting_lang_display_name}.",
-        "kk": "Сәлем, {first_name}!\nМен сіздің AI Оқу Жәрдемшіңізбін. Енді мен сізбен {greeting_lang_display_name} тілінде сөйлесуге тырысамын.",
-        "de": "Hallo {first_name}!\nIch bin dein KI-Lernassistent. Ich werde jetzt versuchen, mit dir auf {greeting_lang_display_name} zu sprechen.",
-        "ru": "Привет, {first_name}!\nЯ — твой AI-помощник в учебе. Теперь я постараюсь говорить с тобой на {greeting_lang_display_name}.",
-        "zh-CN": "你好，{first_name}！\n我是你的AI学习助手。现在我将尝试使用{greeting_lang_display_name}与你交流。",
-        "ja": "こんにちは、{first_name}さん！\n私はあなたのAI学習アシスタントです。これから{greeting_lang_display_name}で話すようにします。",
-        "ko": "안녕하세요, {first_name}님!\n저는 당신의 AI 학습 도우미입니다. 이제부터 {greeting_lang_display_name}로 말해보겠습니다.",
-        "pt-BR": "Olá {first_name}!\nSou seu Assistente de Estudos com IA. Agora vou tentar falar com você em {greeting_lang_display_name}.",
-        "it": "Ciao {first_name}!\nSono il tuo Assistente di Studio AI. Ora cercherò di parlarti in {greeting_lang_display_name}.",
-        "ar": "مرحبًا {first_name}!\nأنا مساعدك الدراسي الذكي. سأحاول الآن التحدث معك بـ{greeting_lang_display_name}.",
-        "hi": "नमस्ते {first_name}!\nमैं आपका एआई अध्ययन सहायक हूँ। अब मैं आपसे {greeting_lang_display_name} में बात करने की कोशिश करूँगा।",
-        "tr": "Merhaba {first_name}!\nBen senin AI Eğitim Yardımcınım. Artık seninle {greeting_lang_display_name} dilinde konuşmaya çalışacağım.",
-        "nl": "Hoi {first_name}!\nIk ben je AI Studiehulp. Ik zal nu proberen met je te praten in {greeting_lang_display_name}.",
-        "pl": "Cześć {first_name}!\nJestem twoim AI Asystentem Nauki. Teraz spróbuję mówić do ciebie po {greeting_lang_display_name}.",
-        "sv": "Hej {first_name}!\nJag är din AI-studiehjälp. Jag kommer nu att försöka tala med dig på {greeting_lang_display_name}.",
-        "fi": "Hei {first_name}!\nOlen tekoälyopiskeluavustajasi. Yritän nyt puhua kanssasi {greeting_lang_display_name}-kielellä.",
-        "no": "Hei {first_name}!\nJeg er din AI-studiehjelper. Nå vil jeg prøve å snakke med deg på {greeting_lang_display_name}.",
-        "da": "Hej {first_name}!\nJeg er din AI-studiehjælper. Jeg vil nu forsøge at tale med dig på {greeting_lang_display_name}.",
-        "cs": "Ahoj {first_name}!\nJsem tvůj AI studijní pomocník. Teď se pokusím s tebou mluvit v {greeting_lang_display_name}.",
-        "hu": "Szia {first_name}!\nÉn vagyok az AI tanulási segéded. Mostantól megpróbálok {greeting_lang_display_name} nyelven beszélni veled.",
-        "ro": "Bună {first_name}!\nSunt Asistentul tău AI pentru studiu. Acum voi încerca să vorbesc cu tine în {greeting_lang_display_name}.",
-        "el": "Γεια σου {first_name}!\nΕίμαι ο Βοηθός Μελέτης AI σου. Τώρα θα προσπαθήσω να σου μιλήσω στα {greeting_lang_display_name}.",
-        "he": "שלום {first_name}!\nאני העוזר החכם שלך ללמידה. עכשיו אנסה לדבר איתך ב־{greeting_lang_display_name}.",
-        "th": "สวัสดี {first_name}!\nฉันคือผู้ช่วยเรียนรู้ AI ของคุณ ตอนนี้ฉันจะพยายามพูดกับคุณเป็นภาษา {greeting_lang_display_name}",
-        "vi": "Xin chào {first_name}!\nTôi là Trợ lý học tập AI của bạn. Giờ tôi sẽ cố gắng nói chuyện với bạn bằng {greeting_lang_display_name}.",
-        "id": "Halo {first_name}!\nSaya Asisten Belajar AI Anda. Sekarang saya akan mencoba berbicara dengan Anda dalam {greeting_lang_display_name}.",
-        "ms": "Hai {first_name}!\nSaya Pembantu Pembelajaran AI anda. Sekarang saya akan cuba bercakap dengan anda dalam {greeting_lang_display_name}.",
-        "uk": "Привіт, {first_name}!\nЯ твій AI-помічник у навчанні. Тепер я намагатимусь говорити з тобою {greeting_lang_display_name}.",
-        "uz": "Salom, {first_name}!\nMen sizning sun’iy intellekt asosidagi o‘quv yordamchingizman. Endi men {greeting_lang_display_name} tilida gapirishga harakat qilaman.",
-        "zh-TW": "你好，{first_name}！\n我是你的AI學習助手。現在我將嘗試用{greeting_lang_display_name}與你對話。",
-        "pt-PT": "Olá {first_name}!\nSou o seu Assistente de Estudos AI. Agora tentarei falar consigo em {greeting_lang_display_name}."
+        "en": "Hello {first_name}!\nI'm your AI Study Helper. I've set my language to English based on your Telegram settings.\n\nFeel free to send me a question, a document, a web link, or even a voice message!",
+        "es": "¡Hola {first_name}!\nSoy tu Ayudante de Estudio AI. He configurado mi idioma a español.\n\n¡Puedes enviarme una pregunta, un documento, un enlace web o incluso un mensaje de voz!",
+        "fr": "Bonjour {first_name} !\nJe suis votre Assistant d'Étude IA. J'ai réglé ma langue sur le français.\n\nN'hésitez pas à m'envoyer une question, un document, un lien web ou même un message vocal !",
+        "kk": "Сәлем, {first_name}!\nМен сіздің AI Оқу Жәрдемшіңізбін. Мен тілімді қазақ тіліне ауыстырдым.\n\nМаған сұрақ, құжат, веб-сілтеме немесе тіпті дауыстық хабарлама жібере аласыз!",
+        "de": "Hallo {first_name}!\nIch bin dein KI-Lernassistent. Ich habe meine Sprache auf Deutsch umgestellt.\n\nSchick mir gerne eine Frage, ein Dokument, einen Weblink oder sogar eine Sprachnachricht!",
+        "ru": "Привет, {first_name}!\nЯ — твой AI-помощник в учебе. Теперь я буду говорить с тобой по-русски.\n\nМожешь задать мне вопрос, прислать документ, веб-ссылку или даже голосовое сообщение!",
+        "zh-CN": "你好，{first_name}！\n我是你的AI学习助手。我已经将语言切换为中文。\n\n你可以向我发送问题、文档、网页链接，甚至是语音消息！",
+        "ja": "こんにちは、{first_name}さん！\n私はあなたのAI学習アシスタントです。言語を日本語に設定しました。\n\n質問、ドキュメント、ウェブリンク、さらには音声メッセージでも送ってください！",
+        "ko": "안녕하세요, {first_name}님!\n저는 당신의 AI 학습 도우미입니다. 언어를 한국어로 설정했습니다.\n\n질문, 문서, 웹 링크, 심지어 음성 메시지도 보내주세요!",
+        "pt-BR": "Olá {first_name}!\nSou seu Assistente de Estudos com IA. Configurei meu idioma para português.\n\nSinta-se à vontade para me enviar uma pergunta, um documento, um link da web ou até mesmo uma mensagem de voz!",
+        "it": "Ciao {first_name}!\nSono il tuo Assistente di Studio AI. Ho impostato la mia lingua sull'italiano.\n\nSentiti libero di inviarmi una domanda, un documento, un link web o anche un messaggio vocale!",
+        "ar": "مرحبًا {first_name}!\nأنا مساعدك الدراسي الذكي. لقد قمت بتعيين لغتي إلى العربية.\n\nلا تتردد في إرسال سؤال أو مستند أو رابط ويب أو حتى رسالة صوتية!",
+        "hi": "नमस्ते {first_name}!\nमैं आपका एआई अध्ययन सहायक हूँ। मैंने अपनी भाषा हिंदी में सेट कर दी है।\n\nमुझे एक प्रश्न, एक दस्तावेज़, एक वेब लिंक, या एक वॉयस संदेश भेजने में संकोच न करें!",
+        "tr": "Merhaba {first_name}!\nBen senin AI Eğitim Yardımcınım. Dilimi Türkçe olarak ayarladım.\n\nBana bir soru, bir belge, bir web bağlantısı ve hatta bir sesli mesaj göndermekten çekinme!",
+        "nl": "Hoi {first_name}!\nIk ben je AI Studiehulp. Ik heb mijn taal ingesteld op Nederlands.\n\nStuur me gerust een vraag, een document, een weblink of zelfs een spraakbericht!",
+        "pl": "Cześć {first_name}!\nJestem twoim AI Asystentem Nauki. Ustawiłem mój język na polski.\n\nMożesz wysłać mi pytanie, dokument, link do strony internetowej, a nawet wiadomość głosową!",
+        "sv": "Hej {first_name}!\nJag är din AI-studiehjälp. Jag har ställt in mitt språk till svenska.\n\nSkicka mig gärna en fråga, ett dokument, en webblänk eller till och med ett röstmeddelande!",
+        "fi": "Hei {first_name}!\nOlen tekoäly-opiskeluavustajasi. Olen asettanut kieleni suomeksi.\n\nVoit lähettää minulle kysymyksen, asiakirjan, verkkolinkin tai jopa ääniviestin!",
+        "no": "Hei {first_name}!\nJeg er din AI-studiehjelper. Jeg har satt språket mitt til norsk.\n\nSend meg gjerne et spørsmål, et dokument, en nettlenke eller til og med en talemelding!",
+        "da": "Hej {first_name}!\nJeg er din AI-studiehjælper. Jeg har indstillet mit sprog til dansk.\n\nDu er velkommen til at sende mig et spørgsmål, et dokument, et weblink eller endda en talebesked!",
+        "cs": "Ahoj {first_name}!\nJsem tvůj AI studijní pomocník. Nastavil jsem svůj jazyk na češtinu.\n\nNeváhej mi poslat otázku, dokument, webový odkaz nebo i hlasovou zprávu!",
+        "hu": "Szia {first_name}!\nÉn vagyok az AI tanulási segéded. A nyelvemet magyarra állítottam.\n\nNyugodtan küldhetsz nekem kérdést, dokumentumot, webes linket, vagy akár hangüzenetet is!",
+        "ro": "Bună {first_name}!\nSunt Asistentul tău AI pentru studiu. Mi-am setat limba la română.\n\nNu ezita să-mi trimiți o întrebare, un document, un link web sau chiar un mesaj vocal!",
+        "el": "Γεια σου {first_name}!\nΕίμαι ο Βοηθός Μελέτης AI σου. Έχω ρυθμίσει τη γλώσσα μου στα ελληνικά.\n\nΜη διστάσεις να μου στείλεις μια ερώτηση, ένα έγγραφο, έναν σύνδεσμο ιστού ή ακόμα και ένα φωνητικό μήνυμα!",
+        "he": "שלום {first_name}!\nאני העוזר החכם שלך ללמידה. הגדרתי את שפתי לעברית.\n\nאתה מוזמן לשלוח לי שאלה, מסמך, קישור לאתר או אפילו הודעה קולית!",
+        "th": "สวัสดี {first_name}!\nฉันคือผู้ช่วยเรียนรู้ AI ของคุณ ฉันได้ตั้งค่าภาษาของฉันเป็นภาษาไทยแล้ว\n\nส่งคำถาม, เอกสาร, ลิงก์เว็บ, หรือแม้แต่ข้อความเสียงมาให้ฉันได้เลย!",
+        "vi": "Xin chào {first_name}!\nTôi là Trợ lý học tập AI của bạn. Tôi đã đặt ngôn ngữ của mình thành tiếng Việt.\n\nBạn có thể gửi cho tôi một câu hỏi, một tài liệu, một liên kết web, hoặc thậm chí là một tin nhắn thoại!",
+        "id": "Halo {first_name}!\nSaya Asisten Belajar AI Anda. Saya telah menyetel bahasa saya ke Bahasa Indonesia.\n\nJangan ragu untuk mengirimi saya pertanyaan, dokumen, tautan web, atau bahkan pesan suara!",
+        "ms": "Hai {first_name}!\nSaya Pembantu Pembelajaran AI anda. Saya telah menetapkan bahasa saya kepada Bahasa Melayu.\n\nJangan teragak-agak untuk menghantar saya soalan, dokumen, pautan web, atau pun mesej suara!",
+        "uk": "Привіт, {first_name}!\nЯ твій AI-помічник у навчанні. Тепер я буду говорити з тобою українською.\n\nМожеш надіслати мені запитання, документ, веб-посилання або навіть голосове повідомлення!",
+        "uz": "Salom, {first_name}!\nMen sizning sun’iy intellekt asosidagi o‘quv yordamchingizman. Men tilimni oʻzbek tiliga sozladim.\n\nMenga savol, hujjat, veb-havola yoki hatto ovozli xabar yuborishingiz mumkin!",
+        "zh-TW": "你好，{first_name}！\n我是你的AI學習助手。我已經將語言切換為繁體中文。\n\n您可以向我傳送問題、文件、網頁連結，甚至是語音訊息！",
+        "pt-PT": "Olá {first_name}!\nSou o seu Assistente de Estudos AI. Defini o meu idioma para português.\n\nSinta-se à vontade para me enviar uma pergunta, um documento, um link da web ou até uma mensagem de voz!"
     },
     "language_change_instruction": {
         "en": "You can change my response language using the /language command.",
@@ -328,272 +328,40 @@ TEMPLATES = {
         "zh-TW": "語言已設為：{lang_name}。",
         "pt-PT": "Idioma definido como: {lang_name}."
     },
-    "help_text_body": {
-        "en": (
-            "I'm your _StudyHelper\\_Bot_! I can analyze text, images, documents, and even search the web for up-to-date information.\n\n"
-            "*Available commands:*\n"
-            "`/start` - Get a welcome message & option to clear chat history.\n"
-            "`/new`   - ✨ Start a new conversation (clears chat memory).\n"
-            "`/help`  - Show this help message.\n"
-            "`/language` - Choose your preferred language for my responses."
-        ),
-        "es": (
-            "¡Soy tu _StudyHelper\\_Bot_! Puedo analizar texto, imágenes, documentos e incluso buscar en la web para obtener información actualizada.\n\n"
-            "*Comandos disponibles:*\n"
-            "`/start` - Recibe un mensaje de bienvenida y la opción de borrar el historial.\n"
-            "`/new`   - ✨ Inicia una nueva conversación (borra la memoria del chat).\n"
-            "`/help`  - Muestra este mensaje de ayuda.\n"
-            "`/language` - Elige tu idioma preferido para mis respuestas."
-        ),
-        "fr": (
-            "Je suis votre _StudyHelper\\_Bot_ ! Je peux analyser du texte, des images, des documents et même rechercher sur le web pour des informations à jour.\n\n"
-            "*Commandes disponibles :*\n"
-            "`/start` - Recevez un message de bienvenue et l'option d'effacer l'historique.\n"
-            "`/new`   - ✨ Démarrez une nouvelle conversation (efface la mémoire du chat).\n"
-            "`/help`  - Affiche ce message d'aide.\n"
-            "`/language` - Choisissez votre langue préférée pour mes réponses."
-        ),
-        "de": (
-            "Ich bin dein _StudyHelper\\_Bot_! Ich kann Texte, Bilder, Dokumente analysieren und sogar im Web nach aktuellen Informationen suchen.\n\n"
-            "*Verfügbare Befehle:*\n"
-            "`/start` - Erhalte eine Willkommensnachricht & die Option, den Chatverlauf zu löschen.\n"
-            "`/new`   - ✨ Starte einen neuen Chat (löscht den Gesprächsspeicher).\n"
-            "`/help`  - Zeige diese Hilfenachricht.\n"
-            "`/language` - Wähle deine bevorzugte Sprache für meine Antworten."
-        ),
-        "ru": (
-            "Я ваш _StudyHelper\\_Bot_! Я могу анализировать текст, изображения, документы и даже искать актуальную информацию в интернете.\n\n"
-            "*Доступные команды:*\n"
-            "`/start` - Получить приветствие и возможность очистить историю чата.\n"
-            "`/new`   - ✨ Начать новый чат (очищает память разговора).\n"
-            "`/help`  - Показать это сообщение помощи.\n"
-            "`/language` - Выберите предпочитаемый язык для моих ответов."
-        ),
-        "zh-CN": (
-            "我是你的 _StudyHelper\\_Bot_！我可以分析文本、图像、文档，甚至可以在网上搜索最新信息。\n\n"
-            "*可用命令：*\n"
-            "`/start` - 获取欢迎信息并选择是否清除聊天记录。\n"
-            "`/new`   - ✨ 开始新对话（清除聊天记忆）。\n"
-            "`/help`  - 显示此帮助信息。\n"
-            "`/language` - 选择我回复时使用的语言。"
-        ),
-        "kk": (
-            "Мен сіздің _StudyHelper\\_Bot_ болып табыламын! Мен мәтінді, суреттерді, құжаттарды талдай аламын, тіпті жаңа ақпаратты интернеттен іздей аламын.\n\n"
-            "*Қолжетімді пәрмендер:*\n"
-            "`/start` - Сәлемдесу хабарламасын және сұхбат тарихын тазарту мүмкіндігін алыңыз.\n"
-            "`/new`   - ✨ Жаңа сұхбат бастау (сұхбат жадын тазартады).\n"
-            "`/help`  - Осы көмек хабарламасын көрсету.\n"
-            "`/language` - Менің жауаптарым үшін қалаған тіліңізді таңдаңыз."
-        ),
-        "ja": (
-            "私はあなたの_StudyHelper\\_Bot_です！テキスト、画像、ドキュメントの分析や、最新情報をウェブで検索することもできます。\n\n"
-            "*利用可能なコマンド:*\n"
-            "`/start` - ウェルカムメッセージとチャット履歴のクリアオプションを表示します。\n"
-            "`/new`   - ✨ 新しい会話を開始します（会話の記憶をクリア）。\n"
-            "`/help`  - このヘルプメッセージを表示します。\n"
-            "`/language` - 返信に使う言語を選択します。"
-        ),
-        "ko": (
-            "저는 당신의 _StudyHelper\\_Bot_입니다! 텍스트, 이미지, 문서를 분석하고 웹에서 최신 정보를 검색할 수도 있습니다.\n\n"
-            "*사용 가능한 명령어:*\n"
-            "`/start` - 환영 메시지 및 대화 기록 삭제 옵션을 봅니다.\n"
-            "`/new`   - ✨ 새 대화 시작 (대화 메모리 삭제).\n"
-            "`/help`  - 이 도움말 메시지를 표시합니다.\n"
-            "`/language` - 답변에 사용할 언어를 선택하세요."
-        ),
-        "pt-BR": (
-            "Eu sou seu _StudyHelper\\_Bot_! Posso analisar textos, imagens, documentos e até pesquisar na web por informações atualizadas.\n\n"
-            "*Comandos disponíveis:*\n"
-            "`/start` - Receba uma mensagem de boas-vindas e a opção de limpar o histórico.\n"
-            "`/new`   - ✨ Inicie uma nova conversa (limpa a memória do chat).\n"
-            "`/help`  - Mostrar esta mensagem de ajuda.\n"
-            "`/language` - Escolha seu idioma preferido para minhas respostas."
-        ),
-        "it": (
-            "Sono il tuo _StudyHelper\\_Bot_! Posso analizzare testi, immagini, documenti e persino cercare sul web per informazioni aggiornate.\n\n"
-            "*Comandi disponibili:*\n"
-            "`/start` - Ricevi un messaggio di benvenuto e l'opzione per cancellare la cronologia.\n"
-            "`/new`   - ✨ Inizia una nuova conversazione (cancella la memoria della chat).\n"
-            "`/help`  - Mostra questo messaggio di aiuto.\n"
-            "`/language` - Scegli la lingua preferita per le mie risposte."
-        ),
-        "ar": (
-            "أنا بوت _StudyHelper\\_Bot_ الخاص بك! يمكنني تحليل النصوص والصور والمستندات وحتى البحث في الويب عن أحدث المعلومات.\n\n"
-            "*الأوامر المتاحة:*\n"
-            "`/start` - احصل على رسالة ترحيب وخيار مسح سجل الدردشة.\n"
-            "`/new`   - ✨ ابدأ محادثة جديدة (يمسح ذاكرة الدردشة).\n"
-            "`/help`  - عرض رسالة المساعدة هذه.\n"
-            "`/language` - اختر لغتك المفضلة لردودي."
-        ),
-        "hi": (
-            "मैं आपका _StudyHelper\\_Bot_ हूँ! मैं पाठ, चित्र, दस्तावेज़ों का विश्लेषण कर सकता हूँ और नवीनतम जानकारी के लिए वेब पर खोज भी कर सकता हूँ।\n\n"
-            "*उपलब्ध कमांड:*\n"
-            "`/start` - स्वागत संदेश और चैट इतिहास साफ़ करने का विकल्प प्राप्त करें।\n"
-            "`/new`   - ✨ नई बातचीत शुरू करें (चैट मेमोरी साफ़ करता है)।\n"
-            "`/help`  - यह सहायता संदेश दिखाएँ।\n"
-            "`/language` - मेरी प्रतिक्रियाओं के लिए اپنی पसंदीदा भाषा चुनें।"
-        ),
-        "tr": (
-            "Ben senin _StudyHelper\\_Bot_'unum! Metin, resim, belgeleri analiz edebilir ve güncel bilgiler için web'de arama yapabilirim.\n\n"
-            "*Mevcut komutlar:*\n"
-            "`/start` - Bir karşılama mesajı ve sohbet geçmişini temizleme seçeneği al.\n"
-            "`/new`   - ✨ Yeni bir sohbet başlat (sohbet hafızasını temizler).\n"
-            "`/help`  - Bu yardım mesajını göster.\n"
-            "`/language` - Yanıtlarım için tercih ettiğin dili seç."
-        ),
-        "nl": (
-            "Ik ben je _StudyHelper\\_Bot_! Ik kan tekst, afbeeldingen, documenten analyseren en zelfs het web doorzoeken voor actuele informatie.\n\n"
-            "*Beschikbare commando's:*\n"
-            "`/start` - Ontvang een welkomstbericht & de optie om de chatgeschiedenis te wissen.\n"
-            "`/new`   - ✨ Start een nieuw gesprek (wist het chatgeheugen).\n"
-            "`/help`  - Toon dit helpbericht.\n"
-            "`/language` - Kies je voorkeurstaal voor mijn antwoorden."
-        ),
-        "pl": (
-            "Jestem twoim _StudyHelper\\_Bot_! Mogę analizować tekst, obrazy, dokumenty, a nawet przeszukiwać internet w poszukiwaniu aktualnych informacji.\n\n"
-            "*Dostępne polecenia:*\n"
-            "`/start` - Otrzymaj wiadomość powitalną i opcję wyczyszczenia historii czatu.\n"
-            "`/new`   - ✨ Rozpocznij nową rozmowę (czyści pamięć czatu).\n"
-            "`/help`  - Pokaż tę wiadomość pomocy.\n"
-            "`/language` - Wybierz preferowany język moich odpowiedzi."
-        ),
-        "sv": (
-            "Jag är din _StudyHelper\\_Bot_! Jag kan analysera text, bilder, dokument och till och med söka på webben efter aktuell information.\n\n"
-            "*Tillgängliga kommandon:*\n"
-            "`/start` - Få ett välkomstmeddelande & alternativet att rensa chatthistoriken.\n"
-            "`/new`   - ✨ Starta en ny konversation (rensar chattminnet).\n"
-            "`/help`  - Visa detta hjälpmeddelande.\n"
-            "`/language` - Välj ditt föredragna språk för mina svar."
-        ),
-        "fi": (
-            "Olen _StudyHelper\\_Bot_! Voin analysoida tekstiä, kuvia, asiakirjoja ja jopa etsiä ajankohtaista tietoa verkosta.\n\n"
-            "*Saatavilla olevat komennot:*\n"
-            "`/start` - Vastaanota tervetuloviesti ja mahdollisuus tyhjentää keskusteluhistoria.\n"
-            "`/new`   - ✨ Aloita uusi keskustelu (tyhjentää keskustelumuistin).\n"
-            "`/help`  - Näytä tämä ohjeviesti.\n"
-            "`/language` - Valitse haluamasi kieli vastauksilleni."
-        ),
-        "no": (
-            "Jeg er din _StudyHelper\\_Bot_! Jeg kan analysere tekst, bilder, dokumenter og til og med søke på nettet etter oppdatert informasjon.\n\n"
-            "*Tilgjengelige kommandoer:*\n"
-            "`/start` - Få en velkomstmelding og muligheten til å slette chatloggen.\n"
-            "`/new`   - ✨ Start en ny samtale (tømmer samtalehukommelsen).\n"
-            "`/help`  - Vis denne hjelpeteksten.\n"
-            "`/language` - Velg ditt foretrukne språk for mine svar."
-        ),
-        "da": (
-            "Jeg er din _StudyHelper\\_Bot_! Jeg kan analysere tekst, billeder, dokumenter og endda søge på nettet efter opdaterede oplysninger.\n\n"
-            "*Tilgængelige kommandoer:*\n"
-            "`/start` - Få en velkomstbesked & muligheden for at rydde chathistorikken.\n"
-            "`/new`   - ✨ Start en ny samtale (rydder chathukommelsen).\n"
-
-            "`/help`  - Vis denne hjælpetekst.\n"
-            "`/language` - Vælg dit foretrukne sprog til mine svar."
-        ),
-        "cs": (
-            "Jsem váš _StudyHelper\\_Bot_! Dokážu analyzovat text, obrázky, dokumenty a dokonce vyhledávat aktuální informace na webu.\n\n"
-            "*Dostupné příkazy:*\n"
-            "`/start` - Získejte uvítací zprávu a možnost vymazat historii chatu.\n"
-            "`/new`   - ✨ Zahájit novou konverzaci (vymaže paměť chatu).\n"
-            "`/help`  - Zobrazit tuto nápovědu.\n"
-            "`/language` - Vyberte preferovaný jazyk pro mé odpovědi."
-        ),
-        "hu": (
-            "Én vagyok a te _StudyHelper\\_Bot_-od! Képes vagyok szöveget, képeket, dokumentumokat elemezni, és akár az interneten is keresni friss információkért.\n\n"
-            "*Elérhető parancsok:*\n"
-            "`/start` - Üdvözlő üzenet fogadása és a csevegési előzmények törlésének lehetősége.\n"
-            "`/new`   - ✨ Új beszélgetés indítása (törli a csevegési memóriát).\n"
-            "`/help`  - Mutasd ezt a súgóüzenetet.\n"
-            "`/language` - Válaszd ki a válaszaim preferált nyelvét."
-        ),
-        "ro": (
-            "Sunt _StudyHelper\\_Bot_-ul tău! Pot analiza texte, imagini, documente și chiar căuta pe web informații actualizate.\n\n"
-            "*Comenzi disponibile:*\n"
-            "`/start` - Primește un mesaj de bun venit și opțiunea de a șterge istoricul conversației.\n"
-            "`/new`   - ✨ Începe o conversație nouă (șterge memoria conversației).\n"
-            "`/help`  - Arată acest mesaj de ajutor.\n"
-            "`/language` - Alege limba preferată pentru răspunsurile mele."
-        ),
-        "el": (
-            "Είμαι ο _StudyHelper\\_Bot_ σου! Μπορώ να αναλύσω κείμενο, εικόνες, έγγραφα και ακόμη και να αναζητήσω στο διαδίκτυο για ενημερωμένες πληροφορίες.\n\n"
-            "*Διαθέσιμες εντολές:*\n"
-            "`/start` - Λάβετε ένα μήνυμα καλωσορίσματος & την επιλογή να καθαρίσετε το ιστορικό συνομιλίας.\n"
-            "`/new`   - ✨ Ξεκινήστε μια νέα συνομιλία (καθαρίζει τη μνήμη συνομιλίας).\n"
-            "`/help`  - Εμφάνιση αυτού του μηνύματος βοήθειας.\n"
-            "`/language` - Επιλέξτε την προτιμώμενη γλώσsa για τις απαντήσεις μου."
-        ),
-        "he": (
-            "אני ה_StudyHelper\\_Bot_ שלך! אני יכול לנתח טקסט, תמונות, מסמכים ואף לחפש באינטרנט מידע עדכני.\n\n"
-            "*פקודות זמינות:*\n"
-            "`/start` - קבל הודעת פתיחה ואפשרות למחוק את היסטוריית הצ׳אט.\n"
-            "`/new`   - ✨ התחל שיחה חדשה (מוחק את זיכרון השיחה).\n"
-            "`/help`  - הצג הודעת עזרה זו.\n"
-            "`/language` - בחר את השפה המועדפת עליך לתשובותיי."
-        ),
-        "th": (
-            "ฉันคือ _StudyHelper\\_Bot_ ของคุณ! ฉันสามารถวิเคราะห์ข้อความ, รูปภาพ, เอกสาร และค้นหาข้อมูลล่าสุดบนเว็บได้\n\n"
-            "*คำสั่งที่ใช้ได้:*\n"
-            "`/start` - รับข้อความต้อนรับและตัวเลือกในการล้างประวัติการแชท\n"
-            "`/new`   - ✨ เริ่มการสนทนาใหม่ (ล้างหน่วยความจำแชท)\n"
-            "`/help`  - แสดงข้อความช่วยเหลือนี้\n"
-            "`/language` - เลือกภาษาที่ต้องการให้ฉันตอบกลับ"
-        ),
-        "vi": (
-            "Tôi là _StudyHelper\\_Bot_ của bạn! Tôi có thể phân tích văn bản, hình ảnh, tài liệu và cả tìm kiếm trên web để có thông tin cập nhật.\n\n"
-            "*Các lệnh có sẵn:*\n"
-            "`/start` - Nhận tin nhắn chào mừng và tùy chọn xóa lịch sử trò chuyện.\n"
-            "`/new`   - ✨ Bắt đầu cuộc trò chuyện mới (xóa bộ nhớ trò chuyện).\n"
-            "`/help`  - Hiển thị tin nhắn trợ giúp này.\n"
-            "`/language` - Chọn ngôn ngữ ưu tiên để tôi trả lời."
-        ),
-        "id": (
-            "Saya _StudyHelper\\_Bot_ Anda! Saya dapat menganalisis teks, gambar, dokumen, dan bahkan mencari di web untuk informasi terkini.\n\n"
-            "*Perintah yang tersedia:*\n"
-            "`/start` - Dapatkan pesan sambutan & opsi untuk menghapus riwayat obrolan.\n"
-            "`/new`   - ✨ Mulai percakapan baru (menghapus memori obrolan).\n"
-            "`/help`  - Tampilkan pesan bantuan ini.\n"
-            "`/language` - Pilih bahasa pilihan Anda untuk tanggapan saya."
-        ),
-        "ms": (
-            "Saya adalah _StudyHelper\\_Bot_ anda! Saya boleh menganalisis teks, imej, dokumen dan juga mencari di web untuk maklumat terkini.\n\n"
-            "*Perintah tersedia:*\n"
-            "`/start` - Dapatkan mesej alu-aluan & pilihan untuk membersihkan sejarah sembang.\n"
-            "`/new`   - ✨ Mulakan perbualan baru (membersihkan memori sembang).\n"
-            "`/help`  - Tunjukkan mesej bantuan ini.\n"
-            "`/language` - Pilih bahasa pilihan anda untuk balasan saya."
-        ),
-        "uk": (
-            "Я ваш _StudyHelper\\_Bot_! Я можу аналізувати текст, зображення, документи і навіть шукати актуальну інформацію в інтернеті.\n\n"
-            "*Доступні команди:*\n"
-            "`/start` - Отримати привітання та можливість очистити історію чату.\n"
-            "`/new`   - ✨ Почати новий чат (очищає пам'ять розмови).\n"
-            "`/help`  - Показати це повідомлення допомоги.\n"
-            "`/language` - Оберіть бажану мову для моїх відповідей."
-        ),
-        "uz": (
-            "Men sizning _StudyHelper\\_Bot_ man! Men matn, rasm, hujjatlarni tahlil qila olaman va hatto eng so'nggi ma'lumotlarni veb-qidiruv orqali topa olaman.\n\n"
-            "*Mavjud buyruqlar:*\n"
-            "`/start` - Xush kelibsiz xabarini va suhbat tarixini tozalash imkoniyatini oling.\n"
-            "`/new`   - ✨ Yangi suhbatni boshlash (suhbat xotirasini tozalaydi).\n"
-            "`/help`  - Ushbu yordam xabarini ko‘rsatish.\n"
-            "`/language` - Javoblarim uchun afzal tilingizni tanlang."
-        ),
-        "zh-TW": (
-            "我是你的 _StudyHelper\\_Bot_！我可以分析文字、圖像、文件，甚至可以搜尋網路以獲取最新資訊。\n\n"
-            "*可用指令：*\n"
-            "`/start` - 獲取歡迎訊息及清除聊天記錄的選項。\n"
-            "`/new`   - ✨ 開始新的對話（清除對話記憶）。\n"
-            "`/help`  - 顯示此幫助訊息。\n"
-            "`/language` - 選擇您希望我使用的回覆語言。"
-        ),
-        "pt-PT": (
-            "Sou o teu _StudyHelper\\_Bot_! Consigo analisar texto, imagens, documentos e até pesquisar na web por informações atualizadas.\n\n"
-            "*Comandos disponíveis:*\n"
-            "`/start` - Recebe uma mensagem de boas-vindas e a opção para limpar o histórico.\n"
-            "`/new`   - ✨ Começa uma nova conversa (limpa a memória da conversa).\n"
-            "`/help`  - Mostra esta mensagem de ajuda.\n"
-            "`/language` - Escolhe a tua língua preferida para as minhas respostas."
-        ),
+    "help_text_intro": {
+        "en": "Here are the available commands:",
+        "es": "Estos son los comandos disponibles:",
+        "fr": "Voici les commandes disponibles :",
+        "kk": "Қолжетімді пәрмендер:",
+        "de": "Hier sind die verfügbaren Befehle:",
+        "ru": "Вот доступные команды:",
+        "zh-CN": "以下是可用命令：",
+        "ja": "利用可能なコマンドは次のとおりです：",
+        "ko": "사용 가능한 명령어는 다음과 같습니다:",
+        "pt-BR": "Aqui estão os comandos disponíveis:",
+        "it": "Ecco i comandi disponibili:",
+        "ar": "هذه هي الأوامر المتاحة:",
+        "hi": "यहाँ उपलब्ध कमांड हैं:",
+        "tr": "Mevcut komutlar şunlardır:",
+        "nl": "Hier zijn de beschikbare commando's:",
+        "pl": "Oto dostępne polecenia:",
+        "sv": "Här är de tillgängliga kommandona:",
+        "fi": "Tässä ovat käytettävissä olevat komennot:",
+        "no": "Her er de tilgjengelige kommandoene:",
+        "da": "Her er de tilgængelige kommandoer:",
+        "cs": "Zde jsou dostupné příkazy:",
+        "hu": "Itt vannak az elérhető parancsok:",
+        "ro": "Iată comenzile disponibile:",
+        "el": "Αυτές είναι οι διαθέσιμες εντολές:",
+        "he": "להלן הפקודות הזמינות:",
+        "th": "นี่คือคำสั่งที่มีให้ใช้งาน:",
+        "vi": "Đây là các lệnh có sẵn:",
+        "id": "Berikut adalah perintah yang tersedia:",
+        "ms": "Berikut adalah arahan yang tersedia:",
+        "uk": "Ось доступні команди:",
+        "uz": "Mavjud buyruqlar quyidagilar:",
+        "zh-TW": "以下是可用指令：",
+        "pt-PT": "Aqui estão os comandos disponíveis:"
     },
     "current_language_is": {
         "en": "Your current language: *{current_lang_name}*.",
@@ -2034,6 +1802,41 @@ TEMPLATES = {
         "zh-TW": "正在從網址擷取內容... 🌐",
         "pt-PT": "A obter conteúdo do URL... 🌐"
     },
+    "fetching_url_deep": {
+        "en": "Analyzing URL... This requires a deep analysis and may take a moment. 🔬",
+        "es": "Analizando URL... Esto requiere un análisis profundo y puede tardar un momento. 🔬",
+        "fr": "Analyse de l'URL... Cela nécessite une analyse approfondie et peut prendre un moment. 🔬",
+        "kk": "URL талдануда... Бұл терең талдауды қажет етеді және біраз уақыт алуы мүмкін. 🔬",
+        "de": "Analysiere URL... Dies erfordert eine tiefgehende Analyse und kann einen Moment dauern. 🔬",
+        "ru": "Анализирую URL... Это требует глубокого анализа и может занять некоторое время. 🔬",
+        "zh-CN": "正在分析网址... 这需要深度分析，可能需要一些时间。🔬",
+        "ja": "URLを分析中... 詳細な分析が必要なため、少々お待ちください。🔬",
+        "ko": "URL 분석 중... 심층 분석이 필요하며 시간이 걸릴 수 있습니다. 🔬",
+        "pt-BR": "Analisando URL... Isto requer uma análise profunda e pode levar um momento. 🔬",
+        "it": "Analisi dell'URL... È richiesta un'analisi approfondita e potrebbe volerci un momento. 🔬",
+        "ar": "جاري تحليل الرابط... هذا يتطلب تحليلًا عميقًا وقد يستغرق لحظة. 🔬",
+        "hi": "यूआरएल का विश्लेषण किया जा रहा है... इसके लिए गहरे विश्लेषण की आवश्यकता है और इसमें कुछ समय लग सकता है। 🔬",
+        "tr": "URL analiz ediliyor... Bu, derin bir analiz gerektirir ve bir dakika sürebilir. 🔬",
+        "nl": "URL analyseren... Dit vereist een diepgaande analyse en kan even duren. 🔬",
+        "pl": "Analizowanie adresu URL... Wymaga to dogłębnej analizy i może zająć chwilę. 🔬",
+        "sv": "Analyserar URL... Detta kräver en djupgående analys och kan ta en stund. 🔬",
+        "fi": "Analysoidaan URL-osoitetta... Tämä vaatii syvällisen analyysin ja saattaa kestää hetken. 🔬",
+        "no": "Analyserer URL... Dette krever en dyp analyse og kan ta et øyeblikk. 🔬",
+        "da": "Analyserer URL... Dette kræver en dybdegående analyse og kan tage et øjeblik. 🔬",
+        "cs": "Analyzuji URL... To vyžaduje hloubkovou analýzu a může to chvíli trvat. 🔬",
+        "hu": "URL elemzése... Ez mélyreható elemzést igényel, és eltarthat egy ideig. 🔬",
+        "ro": "Se analizează URL-ul... Aceasta necesită o analiză aprofundată și poate dura un moment. 🔬",
+        "el": "Ανάλυση του URL... Αυτό απαιτεί μια βαθιά ανάλυση και μπορεί να πάρει λίγο χρόνο. 🔬",
+        "he": "מנתח כתובת... הדבר דורש ניתוח מעמיק ועשוי לקחת רגע. 🔬",
+        "th": "กำลังวิเคราะห์ URL... การดำเนินการนี้ต้องใช้การวิเคราะห์เชิงลึกและอาจใช้เวลาสักครู่ 🔬",
+        "vi": "Đang phân tích URL... Điều này cần phân tích sâu và có thể mất một chút thời gian. 🔬",
+        "id": "Menganalisis URL... Ini memerlukan analisis mendalam dan mungkin memakan waktu sejenak. 🔬",
+        "ms": "Menganalisis URL... Ini memerlukan analisis mendalam dan mungkin mengambil sedikit masa. 🔬",
+        "uk": "Аналізую URL... Це потребує глибокого аналізу і може зайняти деякий час. 🔬",
+        "uz": "URL tahlil qilinmoqda... Bu chuqur tahlilni talab qiladi va biroz vaqt olishi mumkin. 🔬",
+        "zh-TW": "正在分析網址... 這需要深度分析，可能需要一些時間。🔬",
+        "pt-PT": "A analisar URL... Isto requer uma análise profunda e pode demorar um momento. 🔬"
+    },
     "url_not_html": {
         "en": "⚠️ The link does not point to an HTML page. I can only process articles and webpages.",
         "es": "⚠️ El enlace no dirige a una página HTML. Solo puedo procesar artículos y páginas web.",
@@ -2459,207 +2262,484 @@ TEMPLATES = {
         "uz": "Transkripsiya xizmatiga ulanishda muammo yuz berdi. Iltimos, ulanishingizni tekshirib, keyinroq qayta urinib ko‘ring.",
         "zh-TW": "我在連接轉錄服務時遇到問題。請檢查您的連線，稍後再試。",
         "pt-PT": "Estou a ter dificuldades em ligar-me ao serviço de transcrição. Verifique a sua ligação e tente novamente mais tarde."
-    }
+    },
+
+
+
+    "set_subject_prompt": {
+    "en": "To set a subject, use the command followed by the subject name. For example:\n`/set_subject Quantum Physics`",
+    "es": "Para establecer una materia, usa el comando seguido del nombre de la materia. Por ejemplo:\n`/set_subject Física Cuántica`",
+    "fr": "Pour définir un sujet, utilisez la commande suivie du nom du sujet. Par exemple :\n`/set_subject Physique Quantique`",
+    "kk": "Тақырып орнату үшін пәрменді және тақырып атын жазыңыз. Мысалы:\n`/set_subject Кванттық физика`",
+    "de": "Um ein Fach festzulegen, verwende den Befehl gefolgt vom Fachnamen. Zum Beispiel:\n`/set_subject Quantenphysik`",
+    "ru": "Чтобы задать тему, используйте команду и укажите название темы. Например:\n`/set_subject Квантовая физика`",
+    "zh-CN": "要设置主题，请使用命令并附上主题名称。例如：\n`/set_subject 量子物理学`",
+    "ja": "科目を設定するには、コマンドの後に科目名を入力してください。例：\n`/set_subject 量子物理学`",
+    "ko": "주제를 설정하려면 명령어 뒤에 주제 이름을 입력하세요. 예:\n`/set_subject 양자 물리학`",
+    "pt-BR": "Para definir um assunto, use o comando seguido do nome do assunto. Por exemplo:\n`/set_subject Física Quântica`",
+    "it": "Per impostare un argomento, usa il comando seguito dal nome dell'argomento. Ad esempio:\n`/set_subject Fisica Quantistica`",
+    "ar": "لتعيين موضوع، استخدم الأمر متبوعًا باسم الموضوع. على سبيل المثال:\n`/set_subject فيزياء الكم`",
+    "hi": "विषय सेट करने के लिए, कमांड के बाद विषय का नाम लिखें। उदाहरण:\n`/set_subject क्वांटम फिजिक्स`",
+    "tr": "Bir konu ayarlamak için komuttan sonra konu adını yazın. Örneğin:\n`/set_subject Kuantum Fiziği`",
+    "nl": "Gebruik het commando gevolgd door de onderwerpnaam om een onderwerp in te stellen. Bijvoorbeeld:\n`/set_subject Kwantumfysica`",
+    "pl": "Aby ustawić temat, użyj komendy z nazwą tematu. Na przykład:\n`/set_subject Fizyka kwantowa`",
+    "sv": "För att ställa in ett ämne, använd kommandot följt av ämnesnamnet. Exempel:\n`/set_subject Kvantfysik`",
+    "fi": "Aseta aihe kirjoittamalla komento ja aiheen nimi. Esimerkiksi:\n`/set_subject Kvanttifysiikka`",
+    "no": "For å angi et emne, bruk kommandoen etterfulgt av emnets navn. Eksempel:\n`/set_subject Kvantefysikk`",
+    "da": "For at vælge et emne, brug kommandoen efterfulgt af emnets navn. Eksempel:\n`/set_subject Kvantefysik`",
+    "cs": "Chcete-li nastavit téma, použijte příkaz následovaný názvem. Např.:\n`/set_subject Kvantová fyzika`",
+    "hu": "Téma beállításához írd be a parancsot és a téma nevét. Például:\n`/set_subject Kvantumfizika`",
+    "ro": "Pentru a seta un subiect, folosește comanda urmată de numele subiectului. De exemplu:\n`/set_subject Fizica cuantică`",
+    "el": "Για να ορίσετε θέμα, χρησιμοποιήστε την εντολή και το όνομα του θέματος. Π.χ.:\n`/set_subject Κβαντική Φυσική`",
+    "he": "כדי להגדיר נושא, השתמש בפקודה ואחריה שם הנושא. לדוגמה:\n`/set_subject פיזיקה קוונטית`",
+    "th": "หากต้องการตั้งหัวข้อ ให้ใช้คำสั่งตามด้วยชื่อหัวข้อ เช่น:\n`/set_subject ฟิสิกส์ควอนตัม`",
+    "vi": "Để đặt chủ đề, hãy dùng lệnh kèm theo tên chủ đề. Ví dụ:\n`/set_subject Vật lý lượng tử`",
+    "id": "Untuk menetapkan subjek, gunakan perintah diikuti dengan nama subjek. Contoh:\n`/set_subject Fisika Kuantum`",
+    "ms": "Untuk menetapkan subjek, gunakan arahan diikuti dengan nama subjek. Contoh:\n`/set_subject Fizik Kuantum`",
+    "uk": "Щоб задати тему, використовуйте команду з назвою теми. Наприклад:\n`/set_subject Квантова фізика`",
+    "uz": "Mavzuni o'rnatish uchun buyruqdan so'ng mavzu nomini yozing. Masalan:\n`/set_subject Kvant fizikasi`",
+    "zh-TW": "要設定主題，請使用指令加上主題名稱。例如：\n`/set_subject 量子物理`",
+    "pt-PT": "Para definir um assunto, usa o comando seguido do nome do assunto. Por exemplo:\n`/set_subject Física Quântica`"
+},
+    "subject_set_success": {
+    "en": "✅ Your subject has been set to *{subject}*. I will now tailor my answers to this topic.",
+    "es": "✅ Tu materia ha sido establecida en *{subject}*. Ahora adaptaré mis respuestas a este tema.",
+    "fr": "✅ Votre sujet a été défini sur *{subject}*. Je vais maintenant adapter mes réponses à ce sujet.",
+    "kk": "✅ Тақырыбыңыз *{subject}* ретінде орнатылды. Енді мен осы тақырыпқа сәйкес жауап беремін.",
+    "de": "✅ Dein Fach wurde auf *{subject}* gesetzt. Ich werde meine Antworten jetzt an dieses Thema anpassen.",
+    "ru": "✅ Ваша тема установлена как *{subject}*. Я буду подстраивать свои ответы под неё.",
+    "zh-CN": "✅ 您的主题已设置为 *{subject}*。我将根据此主题定制回答。",
+    "ja": "✅ あなたの科目は *{subject}* に設定されました。このトピックに合わせて回答します。",
+    "ko": "✅ 주제가 *{subject}* 로 설정되었습니다. 이 주제에 맞게 답변드리겠습니다.",
+    "pt-BR": "✅ Seu assunto foi definido como *{subject}*. Agora adaptarei minhas respostas a esse tema.",
+    "it": "✅ Il tuo argomento è stato impostato su *{subject}*. Ora adatterò le mie risposte a questo tema.",
+    "ar": "✅ تم تعيين موضوعك إلى *{subject}*. سأخصص إجاباتي لهذا الموضوع.",
+    "hi": "✅ आपका विषय *{subject}* सेट हो गया है। अब मैं इस विषय पर उत्तर दूंगा।",
+    "tr": "✅ Konunuz *{subject}* olarak ayarlandı. Artık bu konuya göre yanıt vereceğim.",
+    "nl": "✅ Je onderwerp is ingesteld op *{subject}*. Ik stem mijn antwoorden hierop af.",
+    "pl": "✅ Twój temat został ustawiony na *{subject}*. Dostosuję odpowiedzi do tego tematu.",
+    "sv": "✅ Ditt ämne har satts till *{subject}*. Jag kommer nu att anpassa mina svar till detta ämne.",
+    "fi": "✅ Aiheesi on asetettu: *{subject}*. Vastaukseni kohdistuvat nyt tähän aiheeseen.",
+    "no": "✅ Ditt emne er satt til *{subject}*. Jeg tilpasser nå svarene mine til dette emnet.",
+    "da": "✅ Dit emne er sat til *{subject}*. Jeg vil nu tilpasse mine svar til dette.",
+    "cs": "✅ Vaše téma bylo nastaveno na *{subject}*. Přizpůsobím své odpovědi tomuto tématu.",
+    "hu": "✅ A témád beállítva: *{subject}*. Mostantól ehhez igazítom a válaszaimat.",
+    "ro": "✅ Subiectul tău a fost setat la *{subject}*. Voi adapta răspunsurile mele la acest subiect.",
+    "el": "✅ Το θέμα σας ορίστηκε σε *{subject}*. Θα προσαρμόσω τις απαντήσεις μου σε αυτό.",
+    "he": "✅ הנושא שלך הוגדר כ-*{subject}*. אתאים את התשובות שלי לנושא זה.",
+    "th": "✅ หัวข้อของคุณตั้งไว้เป็น *{subject}* แล้ว ฉันจะตอบตามหัวข้อนี้",
+    "vi": "✅ Chủ đề của bạn đã được đặt là *{subject}*. Tôi sẽ điều chỉnh câu trả lời theo chủ đề này.",
+    "id": "✅ Subjek Anda telah disetel ke *{subject}*. Saya akan menyesuaikan jawaban dengan topik ini.",
+    "ms": "✅ Subjek anda telah ditetapkan sebagai *{subject}*. Saya akan sesuaikan jawapan saya dengan topik ini.",
+    "uk": "✅ Вашу тему встановлено як *{subject}*. Відповіді тепер будуть стосуватися цієї теми.",
+    "uz": "✅ Mavzu *{subject}* qilib belgilandi. Endi javoblarim shu mavzuga moslashadi.",
+    "zh-TW": "✅ 您的主題已設為 *{subject}*。我會根據這個主題回答。"
+},
+    "no_subject_set": {
+    "en": "You do not have a subject set. I am in general assistant mode. Use `/set_subject [topic]` to set one.",
+    "es": "No tienes una materia establecida. Estoy en modo asistente general. Usa `/set_subject [tema]` para establecer una.",
+    "fr": "Vous n'avez pas défini de sujet. Je suis en mode assistant général. Utilisez `/set_subject [sujet]` pour en définir un.",
+    "kk": "Сізде тақырып орнатылмаған. Қазір мен жалпы көмекші режиміндемін. `/set_subject [тақырып]` пәрменін қолданыңыз.",
+    "de": "Du hast kein Fach festgelegt. Ich bin im allgemeinen Assistentenmodus. Verwende `/set_subject [Thema]`, um eines festzulegen.",
+    "ru": "У вас не задана тема. Я работаю в режиме общего помощника. Используйте `/set_subject [тема]`, чтобы задать её.",
+    "zh-CN": "你尚未设置主题。我处于通用助手模式。请使用 `/set_subject [主题]` 设置一个。",
+    "ja": "科目が設定されていません。私は一般アシスタントモードです。`/set_subject [トピック]` を使って設定してください。",
+    "ko": "주제가 설정되어 있지 않습니다. 일반 보조 모드입니다. `/set_subject [주제]` 명령어를 사용하세요.",
+    "pt-BR": "Você não definiu um assunto. Estou no modo assistente geral. Use `/set_subject [tema]` para definir um.",
+    "it": "Non hai impostato alcun argomento. Sono in modalità assistente generale. Usa `/set_subject [argomento]` per impostarne uno.",
+    "ar": "لم تقم بتعيين موضوع. أنا في وضع المساعد العام. استخدم الأمر `/set_subject [الموضوع]` لتعيين واحد.",
+    "hi": "आपने कोई विषय सेट नहीं किया है। मैं सामान्य सहायक मोड में हूँ। `/set_subject [विषय]` का उपयोग करें।",
+    "tr": "Bir konu ayarlamadınız. Genel asistan modundayım. Bir konu belirlemek için `/set_subject [konu]` komutunu kullanın.",
+    "nl": "Je hebt nog geen onderwerp ingesteld. Ik ben in algemene assistentmodus. Gebruik `/set_subject [onderwerp]` om er een in te stellen.",
+    "pl": "Nie ustawiono tematu. Jestem w trybie ogólnego asystenta. Użyj `/set_subject [temat]`, aby go ustawić.",
+    "sv": "Du har inte ställt in ett ämne. Jag är i allmänt assistentläge. Använd `/set_subject [ämne]` för att ställa in ett.",
+    "fi": "Sinulla ei ole asetettua aihetta. Olen yleisessä avustajatilassa. Käytä komentoa `/set_subject [aihe]` asettaaksesi aiheen.",
+    "no": "Du har ikke satt noe emne. Jeg er i generell assistentmodus. Bruk `/set_subject [emne]` for å sette et.",
+    "da": "Du har ikke angivet et emne. Jeg er i generel assistenttilstand. Brug `/set_subject [emne]` til at angive et.",
+    "cs": "Nemáte nastavené téma. Jsem v obecném asistentním režimu. Použijte `/set_subject [téma]` pro nastavení.",
+    "hu": "Nincs beállított témád. Általános asszisztens módban vagyok. Használd a `/set_subject [téma]` parancsot.",
+    "ro": "Nu ai setat niciun subiect. Sunt în modul asistent general. Folosește comanda `/set_subject [subiect]`.",
+    "el": "Δεν έχετε ορίσει θέμα. Είμαι σε λειτουργία γενικού βοηθού. Χρησιμοποιήστε `/set_subject [θέμα]`.",
+    "he": "לא הוגדר נושא. אני במצב עוזר כללי. השתמש ב-`/set_subject [נושא]` כדי להגדיר אחד.",
+    "th": "คุณยังไม่ได้ตั้งหัวข้อ ฉันอยู่ในโหมดผู้ช่วยทั่วไป ใช้คำสั่ง `/set_subject [หัวข้อ]` เพื่อตั้งค่า",
+    "vi": "Bạn chưa đặt chủ đề. Tôi đang ở chế độ trợ lý chung. Sử dụng `/set_subject [chủ đề]` để đặt.",
+    "id": "Anda belum menetapkan subjek. Saya dalam mode asisten umum. Gunakan `/set_subject [topik]` untuk menetapkannya.",
+    "ms": "Anda belum menetapkan subjek. Saya dalam mod pembantu am. Gunakan `/set_subject [topik]` untuk menetapkannya.",
+    "uk": "У вас не встановлена тема. Я в режимі загального помічника. Використайте `/set_subject [тема]` щоб її встановити.",
+    "uz": "Sizda mavzu belgilanmagan. Men umumiy yordamchi holatida ishlayapman. `/set_subject [mavzu]` buyrug'idan foydalaning.",
+    "zh-TW": "你尚未設定主題。我目前是一般助理模式。請使用 `/set_subject [主題]` 設定。",
+    "pt-PT": "Ainda não definiste um assunto. Estou em modo assistente geral. Usa o comando `/set_subject [tema]` para definir um."
+},
+    "current_subject_is": {
+    "en": "Your current subject is set to *{subject}*. Use `/clear_subject` to remove it.",
+    "es": "Tu materia actual está configurada como *{subject}*. Usa `/clear_subject` para eliminarla.",
+    "fr": "Votre sujet actuel est défini sur *{subject}*. Utilisez `/clear_subject` pour le supprimer.",
+    "kk": "Сіздің ағымдағы пәніңіз *{subject}* болып белгіленді. Оны жою үшін `/clear_subject` пәрменін пайдаланыңыз.",
+    "de": "Dein aktuelles Fach ist auf *{subject}* eingestellt. Verwende `/clear_subject`, um es zu entfernen.",
+    "ru": "Ваш текущий предмет установлен как *{subject}*. Используйте `/clear_subject`, чтобы удалить его.",
+    "zh-CN": "您当前设置的科目是*{subject}*。使用`/clear_subject`可以移除。",
+    "ja": "現在の科目は*{subject}*に設定されています。`/clear_subject`で削除できます。",
+    "ko": "현재 설정된 과목은 *{subject}*입니다. `/clear_subject`를 사용하여 제거할 수 있습니다.",
+    "pt-BR": "Sua matéria atual está definida como *{subject}*. Use `/clear_subject` para removê-la.",
+    "it": "La tua materia attuale è impostata su *{subject}*. Usa `/clear_subject` per rimuoverla.",
+    "ar": "موضوعك الدراسي الحالي هو *{subject}*. استخدم `/clear_subject` لإزالته.",
+    "hi": "आपका वर्तमान विषय *{subject}* पर सेट है। इसे हटाने के लिए `/clear_subject` का उपयोग करें।",
+    "tr": "Mevcut dersiniz *{subject}* olarak ayarlandı. Kaldırmak için `/clear_subject` komutunu kullanın.",
+    "nl": "Je huidige onderwerp is ingesteld op *{subject}*. Gebruik `/clear_subject` om het te verwijderen.",
+    "pl": "Twój obecny przedmiot jest ustawiony na *{subject}*. Użyj `/clear_subject`, aby go usunąć.",
+    "sv": "Ditt nuvarande ämne är inställt på *{subject}*. Använd `/clear_subject` för att ta bort det.",
+    "fi": "Nykyinen aiheesi on *{subject}*. Poista se komennolla `/clear_subject`.",
+    "no": "Ditt nåværende emne er satt til *{subject}*. Bruk `/clear_subject` for å fjerne det.",
+    "da": "Dit nuværende emne er indstillet til *{subject}*. Brug `/clear_subject` for at fjerne det.",
+    "cs": "Váš aktuální předmět je nastaven na *{subject}*. Použijte `/clear_subject` pro jeho odstranění.",
+    "hu": "A jelenlegi tantárgyad a következő: *{subject}*. A `/clear_subject` paranccsal távolíthatod el.",
+    "ro": "Subiectul tău curent este setat la *{subject}*. Folosește `/clear_subject` pentru a-l elimina.",
+    "el": "Το τρέχον θέμα σας έχει οριστεί σε *{subject}*. Χρησιμοποιήστε το `/clear_subject` για να το αφαιρέσετε.",
+    "he": "הנושא הנוכחי שלך מוגדר ל-*{subject}*. השתמש ב-`/clear_subject` כדי להסירו.",
+    "th": "วิชาปัจจุบันของคุณถูกตั้งค่าเป็น *{subject}* ใช้ `/clear_subject` เพื่อลบออก",
+    "vi": "Chủ đề hiện tại của bạn được đặt là *{subject}*. Sử dụng `/clear_subject` để xóa nó.",
+    "id": "Subjek Anda saat ini diatur ke *{subject}*. Gunakan `/clear_subject` untuk menghapusnya.",
+    "ms": "Subjek semasa anda ditetapkan kepada *{subject}*. Gunakan `/clear_subject` untuk memadamkannya.",
+    "uk": "Ваш поточний предмет встановлено як *{subject}*. Використовуйте `/clear_subject`, щоб видалити його.",
+    "uz": "Sizning joriy faningiz *{subject}* qilib belgilangan. Uni oʻchirish uchun `/clear_subject` dan foydalaning.",
+    "zh-TW": "您當前設定的科目是*{subject}*。使用`/clear_subject`可以移除。",
+    "pt-PT": "A sua disciplina atual está definida como *{subject}*. Use `/clear_subject` para a remover."
+},
+    "subject_cleared": {
+    "en": "✅ Your subject has been cleared. I am now back in general assistant mode.",
+    "es": "✅ Tu materia ha sido eliminada. Ahora he vuelto al modo de asistente general.",
+    "fr": "✅ Votre sujet a été effacé. Je suis maintenant de retour en mode assistant général.",
+    "kk": "✅ Сіздің пәніңіз жойылды. Мен енді жалпы көмекші режиміне оралдым.",
+    "de": "✅ Dein Fach wurde gelöscht. Ich bin jetzt wieder im allgemeinen Assistentenmodus.",
+    "ru": "✅ Ваш предмет был удалён. Я снова в режиме общего помощника.",
+    "zh-CN": "✅ 您的科目已被清除。我现在回到了通用助手模式。",
+    "ja": "✅ 科目がクリアされました。汎用アシスタントモードに戻ります。",
+    "ko": "✅ 과목이 삭제되었습니다. 이제 일반 도우미 모드로 돌아갑니다.",
+    "pt-BR": "✅ Sua matéria foi removida. Voltei ao modo de assistente geral.",
+    "it": "✅ La tua materia è stata cancellata. Sono tornato alla modalità di assistente generale.",
+    "ar": "✅ تم مسح موضوعك الدراسي. لقد عدت الآن إلى وضع المساعد العام.",
+    "hi": "✅ आपका विषय हटा दिया गया है। मैं अब सामान्य सहायक मोड में वापस आ गया हूँ।",
+    "tr": "✅ Dersiniz temizlendi. Şimdi genel asistan moduna geri döndüm.",
+    "nl": "✅ Je onderwerp is gewist. Ik ben nu terug in de algemene assistentmodus.",
+    "pl": "✅ Twój przedmiot został wyczyszczony. Wróciłem do trybu ogólnego asystenta.",
+    "sv": "✅ Ditt ämne har rensats. Jag är nu tillbaka i allmänt assistentläge.",
+    "fi": "✅ Aiheesi on poistettu. Olen nyt palannut yleiseen avustajatilaan.",
+    "no": "✅ Emnet ditt er fjernet. Jeg er nå tilbake i generell assistentmodus.",
+    "da": "✅ Dit emne er blevet ryddet. Jeg er nu tilbage i generel assistenttilstand.",
+    "cs": "✅ Váš předmět byl vymazán. Nyní jsem zpět в obecném režimu asistenta.",
+    "hu": "✅ A tantárgyad törölve lett. Visszatértem az általános asszisztens módba.",
+    "ro": "✅ Subiectul tău a fost eliminat. Am revenit la modul de asistent general.",
+    "el": "✅ Το θέμα σας έχει εκκαθαριστεί. Είμαι τώρα ξανά σε λειτουργία γενικού βοηθού.",
+    "he": "✅ הנושא שלך נמחק. חזרתי למצב עוזר כללי.",
+    "th": "✅ วิชาของคุณถูกล้างแล้ว ตอนนี้ฉันกลับมาอยู่ในโหมดผู้ช่วยทั่วไปแล้ว",
+    "vi": "✅ Chủ đề của bạn đã được xóa. Tôi đã trở lại chế độ trợ lý chung.",
+    "id": "✅ Subjek Anda telah dihapus. Saya sekarang kembali ke mode asisten umum.",
+    "ms": "✅ Subjek anda telah dipadamkan. Saya kini kembali dalam mod pembantu umum.",
+    "uk": "✅ Ваш предмет було видалено. Я повернувся до загального режиму помічника.",
+    "uz": "✅ Sizning faningiz tozalandi. Men endi umumiy yordamchi rejimiga qaytdim.",
+    "zh-TW": "✅ 您的科目已被清除。我現在回到了通用助手模式。",
+    "pt-PT": "✅ A sua disciplina foi removida. Voltei ao modo de assistente geral."
+},
     # Add more message keys as needed
 }
+
 COMMANDS = {
     "en": [
         ("start", "Welcome & option to clear chat history"),
         ("new", "✨ Start a new chat (clears conversation memory)"),
         ("help", "Show help message and commands"),
-        ("language", "Choose your preferred language")
+        ("language", "Choose your preferred language"),
+        ("set_subject", "Set a study subject for tailored answers (e.g., /set_subject Biology)"),
+        ("my_subject", "Check your currently set study subject"),
+        ("clear_subject", "Remove your currently set study subject")
     ],
     "es": [
         ("start", "Bienvenido y opción para borrar el historial del chat"),
         ("new", "✨ Iniciar un nuevo chat (borra la memoria de conversación)"),
         ("help", "Mostrar mensaje de ayuda y comandos"),
-        ("language", "Elige tu idioma preferido")
+        ("language", "Elige tu idioma preferido"),
+        ("set_subject", "Establecer una materia de estudio para respuestas personalizadas"),
+        ("my_subject", "Verificar tu materia de estudio actual"),
+        ("clear_subject", "Eliminar tu materia de estudio actual")
     ],
     "fr": [
         ("start", "Bienvenue et option pour effacer l'historique du chat"),
         ("new", "✨ Démarrer un nouveau chat (efface la mémoire de conversation)"),
         ("help", "Afficher le message d’aide et les commandes"),
-        ("language", "Choisissez votre langue préférée")
+        ("language", "Choisissez votre langue préférée"),
+        ("set_subject", "Définir un sujet d'étude pour des réponses personnalisées"),
+        ("my_subject", "Vérifier votre sujet d'étude actuel"),
+        ("clear_subject", "Supprimer votre sujet d'étude actuel")
     ],
     "kk": [
         ("start", "Қош келдіңіз және тарихты тазарту мүмкіндігі"),
         ("new", "✨ Жаңа чат бастау (әңгіме тарихын өшіреді)"),
         ("help", "Көмек хабарламасын және командаларды көрсету"),
-        ("language", "Тілді таңдаңыз")
+        ("language", "Тілді таңдаңыз"),
+        ("set_subject", "Оқу пәнін орнату (мысалы, /set_subject Биология)"),
+        ("my_subject", "Ағымдағы оқу пәніңізді тексеру"),
+        ("clear_subject", "Ағымдағы оқу пәніңізді жою")
     ],
     "de": [
         ("start", "Willkommen & Option zum Löschen des Chatverlaufs"),
         ("new", "✨ Neuen Chat starten (Gesprächsverlauf wird gelöscht)"),
         ("help", "Hilfemeldung und Befehle anzeigen"),
-        ("language", "Bevorzugte Sprache wählen")
+        ("language", "Bevorzugte Sprache wählen"),
+        ("set_subject", "Ein Studienfach für maßgeschneiderte Antworten festlegen"),
+        ("my_subject", "Dein aktuell eingestelltes Studienfach überprüfen"),
+        ("clear_subject", "Dein aktuell eingestelltes Studienfach entfernen")
     ],
     "ru": [
         ("start", "Добро пожаловать и возможность очистить историю чата"),
         ("new", "✨ Начать новый чат (очищает память разговора)"),
         ("help", "Показать сообщение помощи и команды"),
-        ("language", "Выберите предпочитаемый язык")
+        ("language", "Выберите предпочитаемый язык"),
+        ("set_subject", "Установить учебный предмет для точных ответов"),
+        ("my_subject", "Проверить ваш текущий учебный предмет"),
+        ("clear_subject", "Удалить ваш текущий учебный предмет")
     ],
     "zh-CN": [
         ("start", "欢迎并可选择清除聊天记录"),
         ("new", "✨ 开始新的聊天（清除对话记忆）"),
         ("help", "显示帮助信息和命令"),
-        ("language", "选择首选语言")
+        ("language", "选择首选语言"),
+        ("set_subject", "设置学习科目以获得定制回答"),
+        ("my_subject", "查看当前设置的学习科目"),
+        ("clear_subject", "清除当前设置的学习科目")
     ],
     "ja": [
         ("start", "ようこそ。チャット履歴を消去するオプションがあります"),
         ("new", "✨ 新しいチャットを開始（会話の記憶をクリア）"),
         ("help", "ヘルプメッセージとコマンドを表示"),
-        ("language", "希望の言語を選択")
+        ("language", "希望の言語を選択"),
+        ("set_subject", "学習科目を設定して回答を調整"),
+        ("my_subject", "現在設定されている学習科目を確認"),
+        ("clear_subject", "現在設定されている学習科目を削除")
     ],
     "ko": [
         ("start", "환영합니다. 채팅 기록 삭제 옵션 제공"),
         ("new", "✨ 새 채팅 시작 (대화 기록 삭제됨)"),
         ("help", "도움말 메시지 및 명령 보기"),
-        ("language", "선호하는 언어 선택")
+        ("language", "선호하는 언어 선택"),
+        ("set_subject", "맞춤 답변을 위한 학습 과목 설정"),
+        ("my_subject", "현재 설정된 학습 과목 확인"),
+        ("clear_subject", "현재 설정된 학습 과목 제거")
     ],
     "pt-BR": [
         ("start", "Bem-vindo e opção para limpar o histórico de chat"),
         ("new", "✨ Iniciar um novo chat (limpa a memória da conversa)"),
         ("help", "Mostrar mensagem de ajuda e comandos"),
-        ("language", "Escolha seu idioma preferido")
+        ("language", "Escolha seu idioma preferido"),
+        ("set_subject", "Definir uma matéria de estudo para respostas personalizadas"),
+        ("my_subject", "Verificar sua matéria de estudo atual"),
+        ("clear_subject", "Remover sua matéria de estudo atual")
     ],
     "it": [
         ("start", "Benvenuto e opzione per cancellare la cronologia della chat"),
         ("new", "✨ Avvia una nuova chat (cancella la memoria della conversazione)"),
         ("help", "Mostra il messaggio di aiuto e i comandi"),
-        ("language", "Scegli la tua lingua preferita")
+        ("language", "Scegli la tua lingua preferita"),
+        ("set_subject", "Imposta una materia di studio per risposte su misura"),
+        ("my_subject", "Controlla la tua materia di studio attuale"),
+        ("clear_subject", "Rimuovi la tua materia di studio attuale")
     ],
     "ar": [
         ("start", "مرحبًا وخيار مسح سجل الدردشة"),
         ("new", "✨ ابدأ محادثة جديدة (يمسح ذاكرة المحادثة)"),
         ("help", "عرض رسالة المساعدة والأوامر"),
-        ("language", "اختر لغتك المفضلة")
+        ("language", "اختر لغتك المفضلة"),
+        ("set_subject", "حدد موضوعًا دراسيًا لإجابات مخصصة"),
+        ("my_subject", "تحقق من موضوعك الدراسي الحالي"),
+        ("clear_subject", "أزل موضوعك الدراسي الحالي")
     ],
     "hi": [
         ("start", "स्वागत है और चैट इतिहास साफ़ करने का विकल्प"),
         ("new", "✨ नई चैट शुरू करें (बातचीत की स्मृति साफ़ करें)"),
         ("help", "सहायता संदेश और कमांड दिखाएं"),
-        ("language", "अपनी पसंदीदा भाषा चुनें")
+        ("language", "अपनी पसंदीदा भाषा चुनें"),
+        ("set_subject", "अनुकूलित उत्तरों के लिए एक अध्ययन विषय सेट करें"),
+        ("my_subject", "अपना वर्तमान अध्ययन विषय जांचें"),
+        ("clear_subject", "अपना वर्तमान अध्ययन विषय हटाएं")
     ],
     "tr": [
         ("start", "Hoş geldiniz ve sohbet geçmişini temizleme seçeneği"),
         ("new", "✨ Yeni bir sohbet başlat (sohbet geçmişini temizler)"),
         ("help", "Yardım mesajı ve komutları göster"),
-        ("language", "Tercih ettiğiniz dili seçin")
+        ("language", "Tercih ettiğiniz dili seçin"),
+        ("set_subject", "Özelleştirilmiş cevaplar için bir çalışma konusu belirleyin"),
+        ("my_subject", "Mevcut çalışma konunuzu kontrol edin"),
+        ("clear_subject", "Mevcut çalışma konunuzu kaldırın")
     ],
     "nl": [
         ("start", "Welkom en optie om de chatgeschiedenis te wissen"),
         ("new", "✨ Begin een nieuw gesprek (wist gespreksgeheugen)"),
         ("help", "Toon helpbericht en commando's"),
-        ("language", "Kies uw voorkeurstaal")
+        ("language", "Kies uw voorkeurstaal"),
+        ("set_subject", "Stel een studieonderwerp in voor aangepaste antwoorden"),
+        ("my_subject", "Controleer je huidige studieonderwerp"),
+        ("clear_subject", "Verwijder je huidige studieonderwerp")
     ],
     "pl": [
         ("start", "Witamy i opcja wyczyszczenia historii czatu"),
         ("new", "✨ Rozpocznij nowy czat (czyści pamięć rozmowy)"),
         ("help", "Pokaż wiadomość pomocy i komendy"),
-        ("language", "Wybierz preferowany język")
+        ("language", "Wybierz preferowany język"),
+        ("set_subject", "Ustaw przedmiot nauki, aby uzyskać dostosowane odpowiedzi"),
+        ("my_subject", "Sprawdź swój obecny przedmiot nauki"),
+        ("clear_subject", "Usuń swój obecny przedmiot nauki")
     ],
     "sv": [
         ("start", "Välkommen och alternativ för att rensa chattens historik"),
         ("new", "✨ Starta en ny chatt (rensar konversationsminnet)"),
         ("help", "Visa hjälpmeddelande och kommandon"),
-        ("language", "Välj ditt föredragna språk")
+        ("language", "Välj ditt föredragna språk"),
+        ("set_subject", "Ange ett studieämne för anpassade svar"),
+        ("my_subject", "Kontrollera ditt nuvarande studieämne"),
+        ("clear_subject", "Ta bort ditt nuvarande studieämne")
     ],
     "fi": [
         ("start", "Tervetuloa ja mahdollisuus tyhjentää keskusteluhistoria"),
         ("new", "✨ Aloita uusi keskustelu (tyhjentää muistin)"),
         ("help", "Näytä ohjeviesti ja komennot"),
-        ("language", "Valitse haluamasi kieli")
+        ("language", "Valitse haluamasi kieli"),
+        ("set_subject", "Aseta opiskeluaihe räätälöityjä vastauksia varten"),
+        ("my_subject", "Tarkista nykyinen opiskeluaiheesi"),
+        ("clear_subject", "Poista nykyinen opiskeluaiheesi")
     ],
     "no": [
         ("start", "Velkommen og mulighet for å slette chat-historikk"),
         ("new", "✨ Start en ny chat (nullstiller samtaleminnet)"),
         ("help", "Vis hjelpebeskjed og kommandoer"),
-        ("language", "Velg ønsket språk")
+        ("language", "Velg ønsket språk"),
+        ("set_subject", "Angi et studieemne for tilpassede svar"),
+        ("my_subject", "Sjekk ditt nåværende studieemne"),
+        ("clear_subject", "Fjern ditt nåværende studieemne")
     ],
     "da": [
         ("start", "Velkommen og mulighed for at slette chat-historik"),
         ("new", "✨ Start en ny chat (rydder samtalehistorik)"),
         ("help", "Vis hjælpemeddelelse og kommandoer"),
-        ("language", "Vælg dit foretrukne sprog")
+        ("language", "Vælg dit foretrukne sprog"),
+        ("set_subject", "Indstil et studieemne for skræddersyede svar"),
+        ("my_subject", "Tjek dit nuværende studieemne"),
+        ("clear_subject", "Fjern dit nuværende studieemne")
     ],
     "cs": [
         ("start", "Vítejte a možnost vymazat historii chatu"),
         ("new", "✨ Začněte nový chat (vymaže paměť konverzace)"),
         ("help", "Zobrazit nápovědu a příkazy"),
-        ("language", "Vyberte preferovaný jazyk")
+        ("language", "Vyberte preferovaný jazyk"),
+        ("set_subject", "Nastavit studijní předmět pro přizpůsobené odpovědi"),
+        ("my_subject", "Zkontrolovat aktuálně nastavený studijní předmět"),
+        ("clear_subject", "Odstranit aktuálně nastavený studijní předmět")
     ],
     "hu": [
         ("start", "Üdvözlünk és lehetőség a csevegési előzmények törlésére"),
         ("new", "✨ Új beszélgetés indítása (törli a beszélgetés memóriáját)"),
         ("help", "Súgó üzenet és parancsok megjelenítése"),
-        ("language", "Válaszd ki a preferált nyelvedet")
+        ("language", "Válaszd ki a preferált nyelvedet"),
+        ("set_subject", "Tanulmányi tárgy beállítása a testreszabott válaszokhoz"),
+        ("my_subject", "Jelenleg beállított tanulmányi tárgy ellenőrzése"),
+        ("clear_subject", "Jelenleg beállított tanulmányi tárgy eltávolítása")
     ],
     "ro": [
         ("start", "Bun venit și opțiunea de a șterge istoricul chatului"),
         ("new", "✨ Începe un chat nou (șterge memoria conversației)"),
         ("help", "Afișează mesajul de ajutor și comenzile"),
-        ("language", "Alege limba preferată")
+        ("language", "Alege limba preferată"),
+        ("set_subject", "Setați o materie de studiu pentru răspunsuri personalizate"),
+        ("my_subject", "Verificați materia de studiu setată în prezent"),
+        ("clear_subject", "Eliminați materia de studiu setată în prezent")
     ],
     "el": [
         ("start", "Καλώς ήρθατε και δυνατότητα διαγραφής ιστορικού συνομιλιών"),
         ("new", "✨ Έναρξη νέας συνομιλίας (διαγράφει τη μνήμη συνομιλίας)"),
         ("help", "Εμφάνιση μηνύματος βοήθειας και εντολών"),
-        ("language", "Επιλέξτε την προτιμώμενη γλώσσα")
+        ("language", "Επιλέξτε την προτιμώμενη γλώσσα"),
+        ("set_subject", "Ορίστε ένα θέμα μελέτης για προσαρμοσμένες απαντήσεις"),
+        ("my_subject", "Ελέγξτε το τρέχον θέμα μελέτης σας"),
+        ("clear_subject", "Αφαιρέστε το τρέχον θέμα μελέτης σας")
     ],
     "he": [
         ("start", "ברוך הבא ואפשרות למחוק את היסטוריית הצ'אט"),
         ("new", "✨ התחל שיחה חדשה (מוחק את זיכרון השיחה)"),
         ("help", "הצג הודעת עזרה ופקודות"),
-        ("language", "בחר את השפה המועדפת עליך")
+        ("language", "בחר את השפה המועדפת עליך"),
+        ("set_subject", "הגדר נושא לימוד לתשובות מותאמות"),
+        ("my_subject", "בדוק את נושא הלימוד הנוכחי שלך"),
+        ("clear_subject", "הסר את נושא הלימוד הנוכחי שלך")
     ],
     "th": [
         ("start", "ยินดีต้อนรับและตัวเลือกในการล้างประวัติแชท"),
         ("new", "✨ เริ่มแชทใหม่ (ล้างความจำบทสนทนา)"),
         ("help", "แสดงข้อความช่วยเหลือและคำสั่ง"),
-        ("language", "เลือกภาษาที่คุณต้องการ")
+        ("language", "เลือกภาษาที่คุณต้องการ"),
+        ("set_subject", "ตั้งค่าวิชาเรียนเพื่อคำตอบที่ปรับให้เหมาะสม"),
+        ("my_subject", "ตรวจสอบวิชาเรียนที่ตั้งค่าไว้ในปัจจุบัน"),
+        ("clear_subject", "ลบวิชาเรียนที่ตั้งค่าไว้ในปัจจุบัน")
     ],
     "vi": [
         ("start", "Chào mừng và tùy chọn xóa lịch sử trò chuyện"),
         ("new", "✨ Bắt đầu cuộc trò chuyện mới (xóa bộ nhớ cuộc trò chuyện)"),
         ("help", "Hiển thị thông báo trợ giúp và lệnh"),
-        ("language", "Chọn ngôn ngữ ưa thích của bạn")
+        ("language", "Chọn ngôn ngữ ưa thích của bạn"),
+        ("set_subject", "Đặt chủ đề học tập để có câu trả lời phù hợp"),
+        ("my_subject", "Kiểm tra chủ đề học tập hiện tại của bạn"),
+        ("clear_subject", "Xóa chủ đề học tập hiện tại của bạn")
     ],
     "id": [
         ("start", "Selamat datang & opsi untuk menghapus riwayat obrolan"),
         ("new", "✨ Mulai obrolan baru (hapus memori percakapan)"),
         ("help", "Tampilkan pesan bantuan dan perintah"),
-        ("language", "Pilih bahasa pilihan Anda")
+        ("language", "Pilih bahasa pilihan Anda"),
+        ("set_subject", "Atur subjek studi untuk jawaban yang disesuaikan"),
+        ("my_subject", "Periksa subjek studi Anda saat ini"),
+        ("clear_subject", "Hapus subjek studi Anda saat ini")
     ],
     "ms": [
         ("start", "Selamat datang dan pilihan untuk padam sejarah sembang"),
         ("new", "✨ Mulakan sembang baharu (padam memori perbualan)"),
         ("help", "Tunjukkan mesej bantuan dan arahan"),
-        ("language", "Pilih bahasa pilihan anda")
+        ("language", "Pilih bahasa pilihan anda"),
+        ("set_subject", "Tetapkan subjek pengajian untuk jawapan yang disesuaikan"),
+        ("my_subject", "Semak subjek pengajian semasa anda"),
+        ("clear_subject", "Padamkan subjek pengajian semasa anda")
     ],
     "uk": [
         ("start", "Ласкаво просимо та опція очищення історії чату"),
         ("new", "✨ Почати новий чат (очищає памʼять розмови)"),
         ("help", "Показати повідомлення довідки та команди"),
-        ("language", "Виберіть бажану мову")
+        ("language", "Виберіть бажану мову"),
+        ("set_subject", "Встановити навчальний предмет для адаптованих відповідей"),
+        ("my_subject", "Перевірити поточний навчальний предмет"),
+        ("clear_subject", "Видалити поточний навчальний предмет")
     ],
     "uz": [
         ("start", "Xush kelibsiz va suhbat tarixini tozalash varianti"),
         ("new", "✨ Yangi suhbatni boshlash (suhbat xotirasini tozalaydi)"),
         ("help", "Yordam xabari va buyruqlarni ko‘rsatish"),
-        ("language", "Afzal ko‘rgan tilni tanlang")
+        ("language", "Afzal ko‘rgan tilni tanlang"),
+        ("set_subject", "Moslashtirilgan javoblar uchun o'quv fanini o'rnatish"),
+        ("my_subject", "Joriy o'quv faningizni tekshiring"),
+        ("clear_subject", "Joriy o'quv faningizni olib tashlang")
     ],
     "zh-TW": [
         ("start", "歡迎並提供清除聊天記錄的選項"),
         ("new", "✨ 開始新的聊天（清除對話記憶）"),
         ("help", "顯示幫助訊息和指令"),
-        ("language", "選擇您偏好的語言")
+        ("language", "選擇您偏好的語言"),
+        ("set_subject", "設定學習科目以獲得客製化回答"),
+        ("my_subject", "查看當前設定的學習科目"),
+        ("clear_subject", "清除當前設定的學習科目")
     ],
     "pt-PT": [
         ("start", "Bem-vindo e opção para apagar o histórico de conversa"),
         ("new", "✨ Iniciar nova conversa (apaga a memória da conversa)"),
         ("help", "Mostrar mensagem de ajuda e comandos"),
-        ("language", "Escolha o seu idioma preferido")
+        ("language", "Escolha o seu idioma preferido"),
+        ("set_subject", "Definir uma disciplina de estudo para respostas personalizadas"),
+        ("my_subject", "Verificar a sua disciplina de estudo atual"),
+        ("clear_subject", "Remover a sua disciplina de estudo atual")
     ]
 }
 
